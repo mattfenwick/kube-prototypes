@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
@@ -14,6 +15,8 @@ import (
 func RunServer(args []string) {
 	port, err := strconv.ParseInt(args[0], 10, 32)
 	doOrDie(err)
+
+	serverUUID := uuid.NewV4()
 
 	log.SetLevel(log.DebugLevel)
 
@@ -35,6 +38,7 @@ func RunServer(args []string) {
 			Request:         request,
 			ResponseNumber:  respNumber,
 			ResponseMessage: fmt.Sprintf("this is the %d response", respNumber),
+			ServerUUID:      serverUUID.String(),
 		}
 		log.Infof("handling request with response: %s", resp.JSONString(false))
 		respNumber++

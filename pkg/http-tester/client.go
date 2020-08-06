@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/go-resty/resty/v2"
 	"github.com/pkg/errors"
+	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 	"strconv"
 	"time"
@@ -13,6 +14,8 @@ func RunClient(args []string) {
 	serverURL := args[0]
 	serverPort, err := strconv.ParseInt(args[1], 10, 32)
 	doOrDie(err)
+
+	clientUUID := uuid.NewV4()
 
 	url := fmt.Sprintf("%s:%d", serverURL, serverPort)
 
@@ -30,6 +33,7 @@ func RunClient(args []string) {
 			req := &Request{
 				MessageNumber: requestNumber,
 				Message:       fmt.Sprintf("my %d message", requestNumber),
+				ClientUUID:    clientUUID.String(),
 			}
 			requestNumber++
 			log.Infof("issuing request %+v", req)

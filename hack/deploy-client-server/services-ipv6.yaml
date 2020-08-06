@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: http-tester-server
+  name: http-tester-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      component: http-tester-server
+  template:
+    metadata:
+      labels:
+        component: http-tester-server
+    #      annotations:
+    #        prometheus.io/scrape: "true"
+    #        prometheus.io/path: /metrics
+    #        prometheus.io/port: "9876"
+    spec:
+      containers:
+        - image: docker.io/mfenwick100/kube-prototypes-client-server:latest
+          imagePullPolicy: Always
+          name: http-tester-server
+          command:
+            - ./http-tester
+          args:
+            - "server"
+            - "7890"
+          ports:
+            - containerPort: 7890
+              protocol: TCP
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 100m
+            limits:
+              memory: 64Mi
+              cpu: 100m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    component: http-tester-server
+  name: http-tester-server
+spec:
+  ipFamily: IPv6
+  ports:
+    - port: 7890
+      name: port-7890
+      protocol: TCP
+  selector:
+    component: http-tester-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: http-tester-client
+  name: http-tester-client
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      component: http-tester-client
+  template:
+    metadata:
+      labels:
+        component: http-tester-client
+    #      annotations:
+    #        prometheus.io/scrape: "true"
+    #        prometheus.io/path: /metrics
+    #        prometheus.io/port: "9876"
+    spec:
+      containers:
+        - image: docker.io/mfenwick100/kube-prototypes-client-server:latest
+          imagePullPolicy: Always
+          name: http-tester-client
+          command:
+            - ./http-tester
+          args:
+            - "client"
+            - "http://http-tester-server"
+            - "7890"
+          ports:
+            - containerPort: 7891
+              protocol: TCP
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 100m
+            limits:
+              memory: 64Mi
+              cpu: 100m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    component: http-tester-client
+  name: http-tester-client
+spec:
+  ipFamily: IPv6
+  ports:
+    - port: 7891
+      name: port-7891
+      protocol: TCP
+  selector:
+    component: http-tester-client

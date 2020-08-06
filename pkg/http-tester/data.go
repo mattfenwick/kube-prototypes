@@ -5,12 +5,14 @@ import "encoding/json"
 type Request struct {
 	MessageNumber int
 	Message       string
+	ClientUUID    string
 }
 
 type Response struct {
 	Request         *Request
 	ResponseNumber  int
 	ResponseMessage string
+	ServerUUID      string
 }
 
 func (resp *Response) JSONString(indent bool) string {
