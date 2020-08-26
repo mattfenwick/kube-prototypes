@@ -55,7 +55,7 @@ func main() {
 		}
 	}
 
-	interfaces, err := 	net.Interfaces()
+	interfaces, err := net.Interfaces()
 	doOrDie(err)
 	fmt.Printf("interfaces:\n\n")
 	for _, i := range interfaces {
