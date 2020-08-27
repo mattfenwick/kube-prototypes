@@ -38,9 +38,7 @@ func (n *NetworkPolicySpecBuilder) SetName(namespace string, name string) *Netwo
 	return n
 }
 
-// TODO: Sedef: Test match expressions
 func (n *NetworkPolicySpecBuilder) AddIngress(protoc *v1.Protocol, port *int, portName *string, cidr *string, podSelector map[string]string, nsSelector map[string]string, podSelectorMatchExp *[]metav1.LabelSelectorRequirement, nsSelectorMatchExp *[]metav1.LabelSelectorRequirement) *NetworkPolicySpecBuilder {
-
 	var ps *metav1.LabelSelector
 	var ns *metav1.LabelSelector
 	if n.Spec.Ingress == nil {
