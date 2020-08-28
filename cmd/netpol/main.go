@@ -37,6 +37,10 @@ func main() {
 			//explanation := netpol.ExplainPolicy(np)
 			explanation := netpol.ExplainPolicy(createdNp)
 			fmt.Printf("policy explanation for %s:\n%s\n\n", np.Name, explanation.PrettyPrint())
+
+			reduced := netpol.Reduce(createdNp)
+			fmt.Println(netpol.NodePrettyPrint(reduced))
+			fmt.Println()
 		}
 	}
 

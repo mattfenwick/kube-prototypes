@@ -655,6 +655,34 @@ func AllowEgressToAllNamespacesOnPort(namespace string, targetLabels map[string]
 	}
 }
 
+/*
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-nothing
+spec:
+  podSelector:
+    matchLabels:
+      app: foo
+  policyTypes:
+  - Egress
+  - Ingress
+ */
+func AllowNoIngressNorEgress(namespace string, targetLabels map[string]string) *networkingv1.NetworkPolicy {
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("allow-nothing"),
+			Namespace: namespace,
+		},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: targetLabels,
+			},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
+		},
+	}
+}
+
 var AllExamples = []*networkingv1.NetworkPolicy{
 	AllowNothingTo("default", map[string]string{"app": "web"}),
 	AllowNothingToEmptyIngress("default", label("all", "web")),
@@ -683,4 +711,5 @@ var AllExamples = []*networkingv1.NetworkPolicy{
 	AllowEgressOnPort("default", label("app", "foo"), 53),
 	AllowNoEgressFromNamespace("default"),
 	AllowEgressToAllNamespacesOnPort("default", label("app", "foo"), 53),
+	AllowNoIngressNorEgress("default", label("app", "foo")),
 }

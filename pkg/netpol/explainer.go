@@ -156,7 +156,7 @@ func ExplainPolicy(policy *networkingv1.NetworkPolicy) *Explanation {
 }
 
 func ExplainEgress(policy *networkingv1.NetworkPolicy) []*ExplanationEgress {
-	var ingresses []*ExplanationEgress
+	var egresses []*ExplanationEgress
 	for _, rule := range policy.Spec.Egress {
 		var ports []string
 		for _, p := range rule.Ports {
@@ -194,9 +194,9 @@ func ExplainEgress(policy *networkingv1.NetworkPolicy) []*ExplanationEgress {
 				Namespaces: ns,
 			})
 		}
-		ingresses = append(ingresses, &ExplanationEgress{Ports: ports, Rules: rules})
+		egresses = append(egresses, &ExplanationEgress{Ports: ports, Rules: rules})
 	}
-	return ingresses
+	return egresses
 }
 
 func ExplainIngress(policy *networkingv1.NetworkPolicy) []*ExplanationIngress {
