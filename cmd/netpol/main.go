@@ -32,9 +32,10 @@ func main() {
 		doOrDie(err)
 
 		for _, np := range netpol.AllExamples {
-			_, err = k8s.CreateNetworkPolicy(np)
+			createdNp, err := k8s.CreateNetworkPolicy(np)
 			doOrDie(err)
-			explanation := netpol.ExplainPolicy(np)
+			//explanation := netpol.ExplainPolicy(np)
+			explanation := netpol.ExplainPolicy(createdNp)
 			fmt.Printf("policy explanation for %s:\n%s\n\n", np.Name, explanation.PrettyPrint())
 		}
 	}

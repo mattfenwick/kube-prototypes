@@ -2,8 +2,10 @@ package netpol
 
 import (
 	"fmt"
+	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sort"
 	"strings"
 )
@@ -51,6 +53,22 @@ func AllowNothingTo(namespace string, toLabels map[string]string) *networkingv1.
 		Spec: networkingv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{MatchLabels: toLabels},
 			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+		},
+	}
+}
+
+// Same as above, but with empty slice instead of nil slice
+func AllowNothingToEmptyIngress(namespace string, targetLabels map[string]string) *networkingv1.NetworkPolicy {
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("wtf-is-this-to-%s", labelString(targetLabels)),
+			Namespace: namespace,
+		},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: targetLabels,
+			},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{},
 		},
 	}
 }
@@ -368,9 +386,278 @@ spec:
   ingress:
   - from: []
 */
+func AllowFromAnywhere(namespace string, targetLabels map[string]string) *networkingv1.NetworkPolicy {
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("allow-from-anywhere-to-%s", labelString(targetLabels)),
+			Namespace: namespace,
+		},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: targetLabels,
+			},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{
+				{
+					From: []networkingv1.NetworkPolicyPeer{},
+				},
+			},
+		},
+	}
+}
+
+// https://github.com/ahmetb/kubernetes-network-policy-recipes/blob/master/09-allow-traffic-only-to-a-port.md
+/*
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: api-allow-5000
+spec:
+  podSelector:
+    matchLabels:
+      app: apiserver
+  ingress:
+  - ports:
+    - port: 5000
+    from:
+    - podSelector:
+        matchLabels:
+          role: monitoring
+*/
+func AllowSpecificPortTo(namespace string, fromLabels, targetLabels map[string]string, targetPort int) *networkingv1.NetworkPolicy {
+	portRef := intstr.FromInt(targetPort)
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("allow-specific-port-from-%s-to-%s", labelString(fromLabels), labelString(targetLabels)),
+			Namespace: namespace,
+		},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: targetLabels,
+			},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{
+				{
+					Ports: []networkingv1.NetworkPolicyPort{
+						{Port: &portRef},
+					},
+					From: []networkingv1.NetworkPolicyPeer{
+						{
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: fromLabels,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// https://github.com/ahmetb/kubernetes-network-policy-recipes/blob/master/10-allowing-traffic-with-multiple-selectors.md
+/*
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: redis-allow-services
+spec:
+  podSelector:
+    matchLabels:
+      app: bookstore
+      role: db
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: bookstore
+          role: search
+    - podSelector:
+        matchLabels:
+          app: bookstore
+          role: api
+    - podSelector:
+        matchLabels:
+          app: inventory
+          role: web
+*/
+func AllowFromMultipleTo(namespace string, fromLabels []map[string]string, targetLabels map[string]string) *networkingv1.NetworkPolicy {
+	var froms []networkingv1.NetworkPolicyPeer
+	for _, labels := range fromLabels {
+		froms = append(froms, networkingv1.NetworkPolicyPeer{
+			PodSelector: &metav1.LabelSelector{MatchLabels: labels},
+		})
+	}
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("allow-from-multiple-to-%s", labelString(targetLabels)),
+			Namespace: namespace,
+		},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: targetLabels,
+			},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{
+				{From: froms},
+			},
+		},
+	}
+}
+
+// https://github.com/ahmetb/kubernetes-network-policy-recipes/blob/master/11-deny-egress-traffic-from-an-application.md
+/*
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: foo-deny-egress
+spec:
+  podSelector:
+    matchLabels:
+      app: foo
+  policyTypes:
+  - Egress
+  egress: []
+*/
+func AllowNoEgressFromLabels(namespace string, targetLabels map[string]string) *networkingv1.NetworkPolicy {
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("allow-no-egress-from-labels-%s", labelString(targetLabels)),
+			Namespace: namespace,
+		},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: targetLabels,
+			},
+			Egress:      []networkingv1.NetworkPolicyEgressRule{},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
+		},
+	}
+}
+
+/*
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: foo-deny-egress
+spec:
+  podSelector:
+    matchLabels:
+      app: foo
+  policyTypes:
+  - Egress
+  egress:
+  # allow DNS resolution
+  - ports:
+    - port: 53
+      protocol: UDP
+    - port: 53
+      protocol: TCP
+*/
+func AllowEgressOnPort(namespace string, targetLabels map[string]string, port int) *networkingv1.NetworkPolicy {
+	tcp := v1.ProtocolTCP
+	udp := v1.ProtocolUDP
+	portRef := intstr.FromInt(port)
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("allow-egress-on-port-%s", labelString(targetLabels)),
+			Namespace: namespace,
+		},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: targetLabels,
+			},
+			Egress: []networkingv1.NetworkPolicyEgressRule{
+				{
+					Ports: []networkingv1.NetworkPolicyPort{
+						{Protocol: &tcp, Port: &portRef},
+						{Protocol: &udp, Port: &portRef},
+					},
+				},
+			},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
+		},
+	}
+}
+
+// https://github.com/ahmetb/kubernetes-network-policy-recipes/blob/master/12-deny-all-non-whitelisted-traffic-from-the-namespace.md
+/*
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: default-deny-all-egress
+  namespace: default
+spec:
+  policyTypes:
+  - Egress
+  podSelector: {}
+  egress: []
+*/
+func AllowNoEgressFromNamespace(namespace string) *networkingv1.NetworkPolicy {
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("allow-no-egress-from-namespace"),
+			Namespace: namespace,
+		},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{},
+			Egress:      []networkingv1.NetworkPolicyEgressRule{},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
+		},
+	}
+}
+
+// https://github.com/ahmetb/kubernetes-network-policy-recipes/blob/master/14-deny-external-egress-traffic.md
+/*
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: foo-deny-external-egress
+spec:
+  podSelector:
+    matchLabels:
+      app: foo
+  policyTypes:
+  - Egress
+  egress:
+  - ports:
+    - port: 53
+      protocol: UDP
+    - port: 53
+      protocol: TCP
+    to:
+    - namespaceSelector: {}
+*/
+func AllowEgressToAllNamespacesOnPort(namespace string, targetLabels map[string]string, port int) *networkingv1.NetworkPolicy {
+	tcp := v1.ProtocolTCP
+	udp := v1.ProtocolUDP
+	portRef := intstr.FromInt(port)
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("allow-egress-to-all-namespace-from-%s-on-port-%d", labelString(targetLabels), port),
+			Namespace: namespace,
+		},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: targetLabels,
+			},
+			Egress: []networkingv1.NetworkPolicyEgressRule{
+				{
+					Ports: []networkingv1.NetworkPolicyPort{
+						{Protocol: &tcp, Port: &portRef},
+						{Protocol: &udp, Port: &portRef},
+					},
+					To: []networkingv1.NetworkPolicyPeer{
+						{
+							NamespaceSelector: &metav1.LabelSelector{},
+						},
+					},
+				},
+			},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
+		},
+	}
+}
 
 var AllExamples = []*networkingv1.NetworkPolicy{
 	AllowNothingTo("default", map[string]string{"app": "web"}),
+	AllowNothingToEmptyIngress("default", label("all", "web")),
 	AllowFromTo("default", map[string]string{"app": "bookstore"}, map[string]string{"app": "bookstore", "role": "api"}),
 	AllowAllTo("default", map[string]string{"app": "web"}),
 	AllowNothingToAnything("default"),
@@ -382,4 +669,18 @@ var AllExamples = []*networkingv1.NetworkPolicy{
 	AllowAllTo_Version4("default", label("app", "web")),
 	AllowFromNamespaceTo("default", label("purpose", "production"), label("app", "web")),
 	AllowFromDifferentNamespaceWithLabelsTo("default", label("type", "monitoring"), label("team", "operations"), label("app", "web")),
+	AllowFromAnywhere("default", label("app", "web")),
+	AllowSpecificPortTo("default", label("role", "monitoring"), label("app", "apiserver"), 5000),
+	AllowFromMultipleTo(
+		"default",
+		[]map[string]string{
+			{"app": "bookstore", "role": "search"},
+			{"app": "bookstore", "role": "api"},
+			{"app": "inventory", "role": "web"},
+		},
+		map[string]string{"app": "bookstore", "role": "db"}),
+	AllowNoEgressFromLabels("default", label("app", "foo")),
+	AllowEgressOnPort("default", label("app", "foo"), 53),
+	AllowNoEgressFromNamespace("default"),
+	AllowEgressToAllNamespacesOnPort("default", label("app", "foo"), 53),
 }
