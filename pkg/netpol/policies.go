@@ -667,7 +667,7 @@ spec:
   policyTypes:
   - Egress
   - Ingress
- */
+*/
 func AllowNoIngressNorEgress(namespace string, targetLabels map[string]string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{

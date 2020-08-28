@@ -235,7 +235,7 @@ func ReduceNetworkPolicyPeer(isEgress bool, npp networkingv1.NetworkPolicyPeer) 
 	}
 	return &Branch{
 		Operation: operation,
-		Nodes: nodes,
+		Nodes:     nodes,
 	}
 }
 
