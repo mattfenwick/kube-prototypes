@@ -4,6 +4,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type SourceDestAndPort struct {
+	SourceDest SourceDest
+	Port       Port
+}
+
+func (sdap *SourceDestAndPort) Allows(td *TrafficDirection) bool {
+	if !sdap.Port.Allows(td.Port) {
+		return false
+	}
+	return sdap.SourceDest.Allows(td.SourceDest)
+}
+
 // NetworkPolicyPeer possibilities:
 // 1. PodSelector:
 //   - empty/nil
