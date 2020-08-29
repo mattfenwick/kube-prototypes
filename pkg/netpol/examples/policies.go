@@ -1,4 +1,4 @@
-package netpol
+package examples
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ func label(key, val string) map[string]string {
 	return map[string]string{key: val}
 }
 
-func labelString(labels map[string]string) string {
+func LabelString(labels map[string]string) string {
 	// 1. first, sort the keys so we get a deterministic answer
 	var keys []string
 	for key := range labels {
@@ -47,7 +47,7 @@ spec:
 func AllowNothingTo(namespace string, toLabels map[string]string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-nothing-to-%s", labelString(toLabels)),
+			Name:      fmt.Sprintf("allow-nothing-to-%s", LabelString(toLabels)),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -61,7 +61,7 @@ func AllowNothingTo(namespace string, toLabels map[string]string) *networkingv1.
 func AllowNothingToEmptyIngress(namespace string, targetLabels map[string]string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("wtf-is-this-to-%s", labelString(targetLabels)),
+			Name:      fmt.Sprintf("wtf-is-this-to-%s", LabelString(targetLabels)),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -93,7 +93,7 @@ spec:
 func AllowFromTo(namespace string, fromLabels map[string]string, toLabels map[string]string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-from-%s-to-%s", labelString(fromLabels), labelString(toLabels)),
+			Name:      fmt.Sprintf("allow-from-%s-to-%s", LabelString(fromLabels), LabelString(toLabels)),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -117,7 +117,7 @@ kind: NetworkPolicy
 apiVersion: networking.k8s.io/v1
 metadata:
   name: web-allow-all
-  namespace: default
+  Namespace: default
 spec:
   podSelector:
     matchLabels:
@@ -128,7 +128,7 @@ spec:
 func AllowAllTo(namespace string, toLabels map[string]string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-all-to-%s", labelString(toLabels)),
+			Name:      fmt.Sprintf("allow-all-to-%s", LabelString(toLabels)),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -148,7 +148,7 @@ kind: NetworkPolicy
 apiVersion: networking.k8s.io/v1
 metadata:
   name: default-deny-all
-  namespace: default
+  Namespace: default
 spec:
   podSelector: {}
   ingress: []
@@ -171,7 +171,7 @@ func AllowNothingToAnything(namespace string) *networkingv1.NetworkPolicy {
 kind: NetworkPolicy
 apiVersion: networking.k8s.io/v1
 metadata:
-  namespace: secondary
+  Namespace: secondary
   name: deny-from-other-namespaces
 spec:
   podSelector:
@@ -183,7 +183,7 @@ spec:
 func AllowAllWithinNamespace(namespace string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "allow-all-within-namespace",
+			Name:      "allow-all-within-Namespace",
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -208,7 +208,7 @@ func AllowAllWithinNamespace(namespace string) *networkingv1.NetworkPolicy {
 kind: NetworkPolicy
 apiVersion: networking.k8s.io/v1
 metadata:
-  namespace: secondary
+  Namespace: secondary
   name: web-allow-all-namespaces
 spec:
   podSelector:
@@ -221,7 +221,7 @@ spec:
 func AllowAllTo_Version2(namespace string, targetLabels map[string]string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-all-to-version2-%s", labelString(targetLabels)),
+			Name:      fmt.Sprintf("allow-all-to-version2-%s", LabelString(targetLabels)),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -245,7 +245,7 @@ func AllowAllTo_Version2(namespace string, targetLabels map[string]string) *netw
 kind: NetworkPolicy
 apiVersion: networking.k8s.io/v1
 metadata:
-  namespace: secondary
+  Namespace: secondary
   name: web-allow-all-namespaces
 spec:
   podSelector:
@@ -257,7 +257,7 @@ spec:
 func AllowAllTo_Version3(namespace string, targetLabels map[string]string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-all-to-version3-%s", labelString(targetLabels)),
+			Name:      fmt.Sprintf("allow-all-to-version3-%s", LabelString(targetLabels)),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -274,7 +274,7 @@ func AllowAllTo_Version3(namespace string, targetLabels map[string]string) *netw
 func AllowAllTo_Version4(namespace string, toLabels map[string]string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-all-to-version4-%s", labelString(toLabels)),
+			Name:      fmt.Sprintf("allow-all-to-version4-%s", LabelString(toLabels)),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -309,7 +309,7 @@ spec:
 func AllowFromNamespaceTo(namespace string, namespaceLabels map[string]string, toLabels map[string]string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-from-namespace-to-%s", labelString(toLabels)),
+			Name:      fmt.Sprintf("allow-from-Namespace-to-%s", LabelString(toLabels)),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -335,7 +335,7 @@ kind: NetworkPolicy
 apiVersion: networking.k8s.io/v1
 metadata:
   name: web-allow-all-ns-monitoring
-  namespace: default
+  Namespace: default
 spec:
   podSelector:
     matchLabels:
@@ -352,7 +352,7 @@ spec:
 func AllowFromDifferentNamespaceWithLabelsTo(namespace string, fromLabels, namespaceLabels, toLabels map[string]string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-from-namespace-with-labels-%s-to-%s", labelString(fromLabels), labelString(toLabels)),
+			Name:      fmt.Sprintf("allow-from-Namespace-with-labels-%s-to-%s", LabelString(fromLabels), LabelString(toLabels)),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -389,7 +389,7 @@ spec:
 func AllowFromAnywhere(namespace string, targetLabels map[string]string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-from-anywhere-to-%s", labelString(targetLabels)),
+			Name:      fmt.Sprintf("allow-from-anywhere-to-%s", LabelString(targetLabels)),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -427,7 +427,7 @@ func AllowSpecificPortTo(namespace string, fromLabels, targetLabels map[string]s
 	portRef := intstr.FromInt(targetPort)
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-specific-port-from-%s-to-%s", labelString(fromLabels), labelString(targetLabels)),
+			Name:      fmt.Sprintf("allow-specific-port-from-%s-to-%s", LabelString(fromLabels), LabelString(targetLabels)),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -487,7 +487,7 @@ func AllowFromMultipleTo(namespace string, fromLabels []map[string]string, targe
 	}
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-from-multiple-to-%s", labelString(targetLabels)),
+			Name:      fmt.Sprintf("allow-from-multiple-to-%s", LabelString(targetLabels)),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -518,7 +518,7 @@ spec:
 func AllowNoEgressFromLabels(namespace string, targetLabels map[string]string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-no-egress-from-labels-%s", labelString(targetLabels)),
+			Name:      fmt.Sprintf("allow-no-egress-from-labels-%s", LabelString(targetLabels)),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -556,7 +556,7 @@ func AllowEgressOnPort(namespace string, targetLabels map[string]string, port in
 	portRef := intstr.FromInt(port)
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-egress-on-port-%s", labelString(targetLabels)),
+			Name:      fmt.Sprintf("allow-egress-on-port-%s", LabelString(targetLabels)),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -582,7 +582,7 @@ kind: NetworkPolicy
 apiVersion: networking.k8s.io/v1
 metadata:
   name: default-deny-all-egress
-  namespace: default
+  Namespace: default
 spec:
   policyTypes:
   - Egress
@@ -592,7 +592,7 @@ spec:
 func AllowNoEgressFromNamespace(namespace string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-no-egress-from-namespace"),
+			Name:      fmt.Sprintf("allow-no-egress-from-Namespace"),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -630,7 +630,7 @@ func AllowEgressToAllNamespacesOnPort(namespace string, targetLabels map[string]
 	portRef := intstr.FromInt(port)
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-egress-to-all-namespace-from-%s-on-port-%d", labelString(targetLabels), port),
+			Name:      fmt.Sprintf("allow-egress-to-all-Namespace-from-%s-on-port-%d", LabelString(targetLabels), port),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{

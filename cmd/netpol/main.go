@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol"
+	"github.com/mattfenwick/kube-prototypes/pkg/netpol/examples"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/matcher"
 	log "github.com/sirupsen/logrus"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -36,7 +37,7 @@ func main() {
 		doOrDie(err)
 
 		var allCreated []*networkingv1.NetworkPolicy
-		for _, np := range netpol.AllExamples {
+		for _, np := range examples.AllExamples {
 			createdNp, err := k8s.CreateNetworkPolicy(np)
 			allCreated = append(allCreated, createdNp)
 			doOrDie(err)
@@ -54,6 +55,9 @@ func main() {
 		doOrDie(err)
 		fmt.Printf("full network policies:\n\n%s\n\n", bytes)
 		fmt.Printf("explained:\n%s\n", matcher.Explain(netpols))
+
+		netpolsExamples := matcher.BuildNetworkPolicies([]*networkingv1.NetworkPolicy{examples.ExampleComplicatedNetworkPolicy()})
+		fmt.Printf("examples explained:\n%s\n", matcher.Explain(netpolsExamples))
 	}
 
 	if false {

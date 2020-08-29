@@ -2,6 +2,7 @@ package netpol
 
 import (
 	"fmt"
+	"github.com/mattfenwick/kube-prototypes/pkg/netpol/examples"
 	log "github.com/sirupsen/logrus"
 	networkingv1 "k8s.io/api/networking/v1"
 	"strings"
@@ -130,7 +131,7 @@ func ExplainPolicy(policy *networkingv1.NetworkPolicy) *Explanation {
 	if len(targetLabels) == 0 {
 		targetPods = "all pods"
 	} else {
-		targetPods = fmt.Sprintf("pods with labels %s", labelString(targetLabels))
+		targetPods = fmt.Sprintf("pods with labels %s", examples.LabelString(targetLabels))
 	}
 
 	isIngress, isEgress := false, false
@@ -178,7 +179,7 @@ func ExplainEgress(policy *networkingv1.NetworkPolicy) []*ExplanationEgress {
 			} else if len(to.PodSelector.MatchLabels) == 0 {
 				pods = "all pods"
 			} else {
-				pods = fmt.Sprintf("pods with labels %s", labelString(to.PodSelector.MatchLabels))
+				pods = fmt.Sprintf("pods with labels %s", examples.LabelString(to.PodSelector.MatchLabels))
 			}
 
 			if to.NamespaceSelector == nil {
@@ -186,7 +187,7 @@ func ExplainEgress(policy *networkingv1.NetworkPolicy) []*ExplanationEgress {
 			} else if len(to.NamespaceSelector.MatchLabels) == 0 {
 				ns = "all namespaces"
 			} else {
-				ns = fmt.Sprintf("namespaces with labels %s", labelString(to.NamespaceSelector.MatchLabels))
+				ns = fmt.Sprintf("namespaces with labels %s", examples.LabelString(to.NamespaceSelector.MatchLabels))
 			}
 
 			rules = append(rules, &ExplanationRule{
@@ -222,7 +223,7 @@ func ExplainIngress(policy *networkingv1.NetworkPolicy) []*ExplanationIngress {
 			} else if len(from.PodSelector.MatchLabels) == 0 {
 				pods = "all pods"
 			} else {
-				pods = fmt.Sprintf("only pods with labels %s", labelString(from.PodSelector.MatchLabels))
+				pods = fmt.Sprintf("only pods with labels %s", examples.LabelString(from.PodSelector.MatchLabels))
 			}
 
 			if from.NamespaceSelector == nil {
@@ -230,7 +231,7 @@ func ExplainIngress(policy *networkingv1.NetworkPolicy) []*ExplanationIngress {
 			} else if len(from.NamespaceSelector.MatchLabels) == 0 {
 				ns = "all namespaces"
 			} else {
-				ns = fmt.Sprintf("only namespaces with labels %s", labelString(from.NamespaceSelector.MatchLabels))
+				ns = fmt.Sprintf("only namespaces with labels %s", examples.LabelString(from.NamespaceSelector.MatchLabels))
 			}
 
 			rules = append(rules, &ExplanationRule{

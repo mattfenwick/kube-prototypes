@@ -6,6 +6,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+func BuildNetworkPolicy(policy *networkingv1.NetworkPolicy) *NetworkPolicies {
+	return BuildNetworkPolicies([]*networkingv1.NetworkPolicy{policy})
+}
+
 func BuildNetworkPolicies(netpols []*networkingv1.NetworkPolicy) *NetworkPolicies {
 	np := NewNetworkPolicies()
 	for _, policy := range netpols {
@@ -33,7 +37,7 @@ func BuildTarget(netpol *networkingv1.NetworkPolicy) *Target {
 func BuildTrafficPeersFromIngress(policyNamespace string, ingresses []networkingv1.NetworkPolicyIngressRule) *TrafficPeers {
 	var sdaps []*SourceDestAndPort
 	for _, ingress := range ingresses {
-		sdaps = append(sdaps, BuildSourceDestAndPortsFromIngressRule(policyNamespace, ingress)...)
+		sdaps = append(sdaps, BuildSourceDestAndPorts(policyNamespace, ingress.Ports, ingress.From)...)
 	}
 	return &TrafficPeers{SourcesOrDests: sdaps}
 }
@@ -41,32 +45,16 @@ func BuildTrafficPeersFromIngress(policyNamespace string, ingresses []networking
 func BuildTrafficPeersFromEgress(policyNamespace string, egresses []networkingv1.NetworkPolicyEgressRule) *TrafficPeers {
 	var sdaps []*SourceDestAndPort
 	for _, egress := range egresses {
-		sdaps = append(sdaps, BuildSourceDestAndPortsFromEgressRule(policyNamespace, egress)...)
+		sdaps = append(sdaps, BuildSourceDestAndPorts(policyNamespace, egress.Ports, egress.To)...)
 	}
 	return &TrafficPeers{SourcesOrDests: sdaps}
 }
 
-func BuildSourceDestAndPortsFromIngressRule(policyNamespace string, ingress networkingv1.NetworkPolicyIngressRule) []*SourceDestAndPort {
+func BuildSourceDestAndPorts(policyNamespace string, npPorts []networkingv1.NetworkPolicyPort, peers []networkingv1.NetworkPolicyPeer) []*SourceDestAndPort {
 	// 1. build ports
-	var ports []Port
-	if len(ingress.Ports) == 0 {
-		ports = append(ports, &AllPortsAllProtocols{})
-	} else {
-		for _, p := range ingress.Ports {
-			ports = append(ports, BuildPort(p))
-		}
-	}
-
+	ports := BuildPortsFromSlice(npPorts)
 	// 2. build SourceDests
-	var sds []SourceDest
-	if len(ingress.From) == 0 {
-		sds = append(sds, &AnywhereSourceDest{})
-	} else {
-		for _, from := range ingress.From {
-			sds = append(sds, BuildSourceDest(policyNamespace, from))
-		}
-	}
-
+	sds := BuildSourceDestsFromSlice(policyNamespace, peers)
 	// 3. build the cartesian product of ports and SourceDests
 	var sdaps []*SourceDestAndPort
 	for _, port := range ports {
@@ -80,38 +68,28 @@ func BuildSourceDestAndPortsFromIngressRule(policyNamespace string, ingress netw
 	return sdaps
 }
 
-func BuildSourceDestAndPortsFromEgressRule(policyNamespace string, egress networkingv1.NetworkPolicyEgressRule) []*SourceDestAndPort {
-	// 1. build ports
+func BuildPortsFromSlice(npPorts []networkingv1.NetworkPolicyPort) []Port {
 	var ports []Port
-	if len(egress.Ports) == 0 {
+	if len(npPorts) == 0 {
 		ports = append(ports, &AllPortsAllProtocols{})
 	} else {
-		for _, p := range egress.Ports {
+		for _, p := range npPorts {
 			ports = append(ports, BuildPort(p))
 		}
 	}
+	return ports
+}
 
-	// 2. build SourceDests
+func BuildSourceDestsFromSlice(policyNamespace string, peers []networkingv1.NetworkPolicyPeer) []SourceDest {
 	var sds []SourceDest
-	if len(egress.To) == 0 {
+	if len(peers) == 0 {
 		sds = append(sds, &AnywhereSourceDest{})
 	} else {
-		for _, from := range egress.To {
+		for _, from := range peers {
 			sds = append(sds, BuildSourceDest(policyNamespace, from))
 		}
 	}
-
-	// 3. build the cartesian product of ports and SourceDests
-	var sdaps []*SourceDestAndPort
-	for _, port := range ports {
-		for _, sd := range sds {
-			sdaps = append(sdaps, &SourceDestAndPort{
-				SourceDest: sd,
-				Port:       port,
-			})
-		}
-	}
-	return sdaps
+	return sds
 }
 
 func isLabelSelectorEmpty(l metav1.LabelSelector) bool {
@@ -139,12 +117,12 @@ func BuildSourceDest(policyNamespace string, peer networkingv1.NetworkPolicyPeer
 	} else {
 		// podSel has some stuff
 		if nsSel == nil {
-			return &PodsInAllNamespacesSourceDest{PodSelector: *podSel}
-		} else if isLabelSelectorEmpty(*nsSel) {
 			return &PodsInPolicyNamespaceSourceDest{
 				PodSelector: *podSel,
 				Namespace:   policyNamespace,
 			}
+		} else if isLabelSelectorEmpty(*nsSel) {
+			return &PodsInAllNamespacesSourceDest{PodSelector: *podSel}
 		} else {
 			// nsSel has some stuff
 			return &SpecificPodsNamespaceSourceDest{

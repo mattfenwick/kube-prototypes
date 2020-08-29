@@ -1,4 +1,4 @@
-package netpol
+package examples
 
 import (
 	networkingv1 "k8s.io/api/networking/v1"

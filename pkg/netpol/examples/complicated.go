@@ -1,4 +1,4 @@
-package matcher
+package examples
 
 import (
 	v1 "k8s.io/api/core/v1"
@@ -7,12 +7,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func example1() networkingv1.NetworkPolicy {
+func ExampleComplicatedNetworkPolicy() *networkingv1.NetworkPolicy {
 	tcp := v1.ProtocolTCP
 	port3333 := intstr.FromInt(3333)
 	port4444 := intstr.FromInt(4444)
 	port5555 := intstr.FromInt(5555)
-	return networkingv1.NetworkPolicy{
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "example-Namespace",
+		},
 		Spec: networkingv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{},
 			Ingress: []networkingv1.NetworkPolicyIngressRule{
