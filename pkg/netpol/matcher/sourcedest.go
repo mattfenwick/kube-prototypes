@@ -9,11 +9,11 @@ type SourceDestAndPort struct {
 	Port       Port
 }
 
-func (sdap *SourceDestAndPort) Allows(td *TrafficDirection) bool {
-	if !sdap.Port.Allows(td.Port) {
+func (sdap *SourceDestAndPort) Allows(rt *ResolvedTraffic) bool {
+	if !sdap.Port.Allows(rt.Traffic.Port) {
 		return false
 	}
-	return sdap.SourceDest.Allows(td.SourceDest)
+	return sdap.SourceDest.Allows(rt.Traffic)
 }
 
 // NetworkPolicyPeer possibilities:
@@ -61,7 +61,7 @@ func (sdap *SourceDestAndPort) Allows(td *TrafficDirection) bool {
 //
 
 type SourceDest interface {
-	Allows(t TrafficSourceDest) bool
+	Allows(t *Traffic) bool
 }
 
 // PodsInAllNamespacesSourceDest models the case where in NetworkPolicyPeer:
@@ -72,11 +72,11 @@ type PodsInAllNamespacesSourceDest struct {
 	PodSelector metav1.LabelSelector
 }
 
-func (p *PodsInAllNamespacesSourceDest) Allows(t TrafficSourceDest) bool {
-	if t.IsExternal() {
+func (p *PodsInAllNamespacesSourceDest) Allows(t *Traffic) bool {
+	if t.IsExternal {
 		return false
 	}
-	return isLabelsMatchLabelSelector(t.GetPodLabels(), p.PodSelector)
+	return isLabelsMatchLabelSelector(t.PodLabels, p.PodSelector)
 }
 
 // SpecificPodsNamespaceSourceDest models the case where in NetworkPolicyPeer:
@@ -88,12 +88,12 @@ type SpecificPodsNamespaceSourceDest struct {
 	NamespaceSelector metav1.LabelSelector
 }
 
-func (s *SpecificPodsNamespaceSourceDest) Allows(t TrafficSourceDest) bool {
-	if t.IsExternal() {
+func (s *SpecificPodsNamespaceSourceDest) Allows(t *Traffic) bool {
+	if t.IsExternal {
 		return false
 	}
-	return isLabelsMatchLabelSelector(t.GetNamespaceLabels(), s.NamespaceSelector) &&
-		isLabelsMatchLabelSelector(t.GetPodLabels(), s.PodSelector)
+	return isLabelsMatchLabelSelector(t.NamespaceLabels, s.NamespaceSelector) &&
+		isLabelsMatchLabelSelector(t.PodLabels, s.PodSelector)
 }
 
 // AllPodsInNamespaceSourceDest models the case where in NetworkPolicyPeer:
@@ -104,11 +104,11 @@ type AllPodsInNamespaceSourceDest struct {
 	NamespaceSelector metav1.LabelSelector
 }
 
-func (a *AllPodsInNamespaceSourceDest) Allows(t TrafficSourceDest) bool {
-	if t.IsExternal() {
+func (a *AllPodsInNamespaceSourceDest) Allows(t *Traffic) bool {
+	if t.IsExternal {
 		return false
 	}
-	return isLabelsMatchLabelSelector(t.GetNamespaceLabels(), a.NamespaceSelector)
+	return isLabelsMatchLabelSelector(t.NamespaceLabels, a.NamespaceSelector)
 }
 
 // AllPodsInPolicyNamespaceSourceDest models the case where in NetworkPolicyPeer:
@@ -119,11 +119,11 @@ type AllPodsInPolicyNamespaceSourceDest struct {
 	Namespace string
 }
 
-func (p *AllPodsInPolicyNamespaceSourceDest) Allows(t TrafficSourceDest) bool {
-	if t.IsExternal() {
+func (p *AllPodsInPolicyNamespaceSourceDest) Allows(t *Traffic) bool {
+	if t.IsExternal {
 		return false
 	}
-	return t.GetNamespace() == p.Namespace
+	return t.Namespace == p.Namespace
 }
 
 // PodsInPolicyNamespaceSourceDest models the case where in NetworkPolicyPeer:
@@ -135,11 +135,11 @@ type PodsInPolicyNamespaceSourceDest struct {
 	Namespace   string
 }
 
-func (p *PodsInPolicyNamespaceSourceDest) Allows(t TrafficSourceDest) bool {
-	if t.IsExternal() {
+func (p *PodsInPolicyNamespaceSourceDest) Allows(t *Traffic) bool {
+	if t.IsExternal {
 		return false
 	}
-	return isLabelsMatchLabelSelector(t.GetPodLabels(), p.PodSelector) && t.GetNamespace() == p.Namespace
+	return isLabelsMatchLabelSelector(t.PodLabels, p.PodSelector) && t.Namespace == p.Namespace
 }
 
 // AllPodsAllNamespacesSourceDest models the case where in NetworkPolicyPeer:
@@ -148,14 +148,14 @@ func (p *PodsInPolicyNamespaceSourceDest) Allows(t TrafficSourceDest) bool {
 // - IPBlock is nil
 type AllPodsAllNamespacesSourceDest struct{}
 
-func (a *AllPodsAllNamespacesSourceDest) Allows(t TrafficSourceDest) bool {
-	return !t.IsExternal()
+func (a *AllPodsAllNamespacesSourceDest) Allows(t *Traffic) bool {
+	return !t.IsExternal
 }
 
 // AnywhereSourceDest models the case where NetworkPolicy(E|In)gressRule.(From|To) is empty
 type AnywhereSourceDest struct{}
 
-func (a *AnywhereSourceDest) Allows(t TrafficSourceDest) bool {
+func (a *AnywhereSourceDest) Allows(t *Traffic) bool {
 	return true
 }
 
@@ -166,7 +166,7 @@ type IPBlockSourceDest struct {
 	Except []string
 }
 
-func (a *IPBlockSourceDest) Allows(t TrafficSourceDest) bool {
+func (a *IPBlockSourceDest) Allows(t *Traffic) bool {
 	//ip, ipnet, err := net.ParseCIDR(t.GetIP())
 	//if err != nil {
 	//	panic(err)

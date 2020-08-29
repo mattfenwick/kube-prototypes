@@ -28,7 +28,7 @@ func (np *NetworkPolicies) TargetsApplyingToNamespace(namespaceLabels map[string
 	panic("TODO")
 }
 
-func (np *NetworkPolicies) IsTrafficAllowed(trafficDirection *TrafficDirection) (bool, []*Target) {
+func (np *NetworkPolicies) IsTrafficAllowed(trafficDirection *ResolvedTraffic) (bool, []*Target) {
 	var matchingTargets []*Target
 	for _, target := range np.Targets {
 		if target.Namespace == trafficDirection.Target.Namespace &&

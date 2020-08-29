@@ -44,8 +44,8 @@ func (t *Target) GetPrimaryKey() string {
 	return t.primaryKey
 }
 
-func (t *Target) Allows(td *TrafficDirection) bool {
-	if td.IsIngress {
+func (t *Target) Allows(td *ResolvedTraffic) bool {
+	if td.Traffic.IsIngress {
 		if t.Ingress == nil {
 			return false
 		}

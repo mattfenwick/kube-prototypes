@@ -24,7 +24,7 @@ func (tp *TrafficPeers) Combine(other *TrafficPeers) *TrafficPeers {
 	return &TrafficPeers{SourcesOrDests: append(mine, theirs...)}
 }
 
-func (tp *TrafficPeers) Allows(td *TrafficDirection) bool {
+func (tp *TrafficPeers) Allows(td *ResolvedTraffic) bool {
 	for _, sd := range tp.SourcesOrDests {
 		if sd.Allows(td) {
 			return true
