@@ -25,7 +25,6 @@ type Results struct {
 }
 
 func IPNetToResults(ipnet *net.IPNet) *Results {
-	net.ParseCIDR()
 	return &Results{
 		IP4:           ipnet.IP.To4(),
 		IP16:          ipnet.IP.To16(),

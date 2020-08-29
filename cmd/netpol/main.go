@@ -2,9 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol"
+	"github.com/mattfenwick/kube-prototypes/pkg/netpol/matcher"
 	log "github.com/sirupsen/logrus"
+	networkingv1 "k8s.io/api/networking/v1"
+
 	//v1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
@@ -31,8 +35,10 @@ func main() {
 		err = k8s.CleanNetworkPolicies("default")
 		doOrDie(err)
 
+		var allCreated []*networkingv1.NetworkPolicy
 		for _, np := range netpol.AllExamples {
 			createdNp, err := k8s.CreateNetworkPolicy(np)
+			allCreated = append(allCreated, createdNp)
 			doOrDie(err)
 			//explanation := netpol.ExplainPolicy(np)
 			explanation := netpol.ExplainPolicy(createdNp)
@@ -42,6 +48,11 @@ func main() {
 			fmt.Println(netpol.NodePrettyPrint(reduced))
 			fmt.Println()
 		}
+
+		netpols := matcher.BuildNetworkPolicies(allCreated)
+		bytes, err := json.MarshalIndent(netpols, "", "  ")
+		doOrDie(err)
+		fmt.Printf("full network policies:\n\n%s\n", bytes)
 	}
 
 	if false {
