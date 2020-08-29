@@ -36,26 +36,10 @@ func (t *Target) Combine(other *Target) *Target {
 	}
 }
 
-// The primary key is a combination of PodSelector and namespace
+// The primary key is a deterministic combination of PodSelector and namespace
 func (t *Target) GetPrimaryKey() string {
 	if t.primaryKey == "" {
-		var labelKeys []string
-		for key := range t.PodSelector.MatchLabels {
-			labelKeys = append(labelKeys, key)
-		}
-		sort.Slice(labelKeys, func(i, j int) bool {
-			return labelKeys[i] < labelKeys[j]
-		})
-		var keyVals []string
-		for _, key := range labelKeys {
-			keyVals = append(keyVals, fmt.Sprintf("%s: %s", key, t.PodSelector.MatchLabels))
-		}
-		// this is weird, but use an array to make the order deterministic
-		bytes, err := json.Marshal([]interface{}{"Namespace", t.Namespace, "MatchLabels", keyVals, "MatchExpression", t.PodSelector.MatchExpressions})
-		if err != nil {
-			log.Fatalf("%+v", err)
-		}
-		t.primaryKey = string(bytes)
+		t.primaryKey = fmt.Sprintf(`{"Namespace": "%s", "PodSelector": %s}`, t.Namespace, SerializeLabelSelector(t.PodSelector))
 	}
 	return t.primaryKey
 }
@@ -72,4 +56,26 @@ func (t *Target) Allows(td *TrafficDirection) bool {
 		}
 		return t.Egress.Allows(td)
 	}
+}
+
+// SerializeLabelSelector deterministically converts a metav1.LabelSelector
+// into a string
+func SerializeLabelSelector(ls metav1.LabelSelector) string {
+	var labelKeys []string
+	for key := range ls.MatchLabels {
+		labelKeys = append(labelKeys, key)
+	}
+	sort.Slice(labelKeys, func(i, j int) bool {
+		return labelKeys[i] < labelKeys[j]
+	})
+	var keyVals []string
+	for _, key := range labelKeys {
+		keyVals = append(keyVals, fmt.Sprintf("%s: %s", key, ls.MatchLabels[key]))
+	}
+	// this is weird, but use an array to make the order deterministic
+	bytes, err := json.Marshal([]interface{}{"MatchLabels", keyVals, "MatchExpression", ls.MatchExpressions})
+	if err != nil {
+		log.Fatalf("%+v", err)
+	}
+	return string(bytes)
 }

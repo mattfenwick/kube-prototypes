@@ -1,6 +1,11 @@
 package matcher
 
 type TrafficPeers struct {
+	// TODO change this to:
+	//   SourceDests map[string]*SourceDestAndPort
+	//   where the key is the PK of SourceDestAndPort
+	//   and add a (tp *TrafficPeers)Add(sdap *SourceDest, port Port) method or something
+	//   goal: nest ports under SourceDests
 	SourcesOrDests []*SourceDestAndPort
 }
 

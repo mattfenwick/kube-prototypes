@@ -52,7 +52,8 @@ func main() {
 		netpols := matcher.BuildNetworkPolicies(allCreated)
 		bytes, err := json.MarshalIndent(netpols, "", "  ")
 		doOrDie(err)
-		fmt.Printf("full network policies:\n\n%s\n", bytes)
+		fmt.Printf("full network policies:\n\n%s\n\n", bytes)
+		fmt.Printf("explained:\n%s\n", matcher.Explain(netpols))
 	}
 
 	if false {
