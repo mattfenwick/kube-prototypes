@@ -1,6 +1,7 @@
 package matcher
 
 import (
+	"encoding/json"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -17,6 +18,12 @@ func (ap *AllPortsAllProtocols) Allows(pp *PortProtocol) bool {
 	return true
 }
 
+func (ap *AllPortsAllProtocols) MarshalJSON() (b []byte, e error) {
+	return json.Marshal(map[string]string{
+		"Type": "all ports all protocols",
+	})
+}
+
 // AllPortsOnProtocol models the case where a protocol is specified but
 // a port number/name is not, which is treated as "allow any number/named
 // port on the matching protocol"
@@ -28,6 +35,13 @@ func (apop *AllPortsOnProtocol) Allows(pp *PortProtocol) bool {
 	return apop.Protocol == pp.Protocol
 }
 
+func (apop *AllPortsOnProtocol) MarshalJSON() (b []byte, e error) {
+	return json.Marshal(map[string]interface{}{
+		"Type":     "all ports on protocol",
+		"Protocol": apop.Protocol,
+	})
+}
+
 // PortProtocol models the case where traffic must match a protocol and
 // a number/named port
 type PortProtocol struct {
@@ -35,8 +49,16 @@ type PortProtocol struct {
 	Port     intstr.IntOrString
 }
 
-func (sp *PortProtocol) Allows(pp *PortProtocol) bool {
-	return sp.Protocol == pp.Protocol && isPortMatch(sp.Port, pp.Port)
+func (pp *PortProtocol) Allows(other *PortProtocol) bool {
+	return other.Protocol == pp.Protocol && isPortMatch(other.Port, pp.Port)
+}
+
+func (pp *PortProtocol) MarshalJSON() (b []byte, e error) {
+	return json.Marshal(map[string]interface{}{
+		"Type":     "port on protocol",
+		"Protocol": pp.Protocol,
+		"Port":     pp.Port,
+	})
 }
 
 func isPortMatch(a intstr.IntOrString, b intstr.IntOrString) bool {

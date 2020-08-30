@@ -1,7 +1,10 @@
 package matcher
 
 import (
+	"encoding/json"
+	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"net"
 )
 
 type SourceDestAndPort struct {
@@ -56,59 +59,12 @@ func (sdap *SourceDestAndPort) Allows(rt *ResolvedTraffic) bool {
 // 7. matching IPBlock
 //   - IPBlock
 //
-// 8. ??? is this possible ???
-//   - everything nil
+// 8. everything
+//   - don't have anything at all -- i.e. empty []NetworkPolicyPeer
 //
 
 type SourceDest interface {
 	Allows(t *Traffic) bool
-}
-
-// PodsInAllNamespacesSourceDest models the case where in NetworkPolicyPeer:
-// - PodSelector is not nil
-// - NamespaceSelector is empty (but not nil!)
-// - IPBlock is nil
-type PodsInAllNamespacesSourceDest struct {
-	PodSelector metav1.LabelSelector
-}
-
-func (p *PodsInAllNamespacesSourceDest) Allows(t *Traffic) bool {
-	if t.IsExternal {
-		return false
-	}
-	return isLabelsMatchLabelSelector(t.PodLabels, p.PodSelector)
-}
-
-// SpecificPodsNamespaceSourceDest models the case where in NetworkPolicyPeer:
-// - PodSelector is not nil
-// - NamespaceSelector is not empty
-// - IPBlock is nil
-type SpecificPodsNamespaceSourceDest struct {
-	PodSelector       metav1.LabelSelector
-	NamespaceSelector metav1.LabelSelector
-}
-
-func (s *SpecificPodsNamespaceSourceDest) Allows(t *Traffic) bool {
-	if t.IsExternal {
-		return false
-	}
-	return isLabelsMatchLabelSelector(t.NamespaceLabels, s.NamespaceSelector) &&
-		isLabelsMatchLabelSelector(t.PodLabels, s.PodSelector)
-}
-
-// AllPodsInNamespaceSourceDest models the case where in NetworkPolicyPeer:
-// - PodSelector is nil or empty
-// - NamespaceSelector is not empty
-// - IPBlock is nil
-type AllPodsInNamespaceSourceDest struct {
-	NamespaceSelector metav1.LabelSelector
-}
-
-func (a *AllPodsInNamespaceSourceDest) Allows(t *Traffic) bool {
-	if t.IsExternal {
-		return false
-	}
-	return isLabelsMatchLabelSelector(t.NamespaceLabels, a.NamespaceSelector)
 }
 
 // AllPodsInPolicyNamespaceSourceDest models the case where in NetworkPolicyPeer:
@@ -126,20 +82,11 @@ func (p *AllPodsInPolicyNamespaceSourceDest) Allows(t *Traffic) bool {
 	return t.Namespace == p.Namespace
 }
 
-// PodsInPolicyNamespaceSourceDest models the case where in NetworkPolicyPeer:
-// - PodSelector is not empty
-// - NamespaceSelector is nil
-// - IPBlock is nil
-type PodsInPolicyNamespaceSourceDest struct {
-	PodSelector metav1.LabelSelector
-	Namespace   string
-}
-
-func (p *PodsInPolicyNamespaceSourceDest) Allows(t *Traffic) bool {
-	if t.IsExternal {
-		return false
-	}
-	return isLabelsMatchLabelSelector(t.PodLabels, p.PodSelector) && t.Namespace == p.Namespace
+func (p *AllPodsInPolicyNamespaceSourceDest) MarshalJSON() (b []byte, e error) {
+	return json.Marshal(map[string]interface{}{
+		"Type":      "all pods in policy namespace",
+		"Namespace": p.Namespace,
+	})
 }
 
 // AllPodsAllNamespacesSourceDest models the case where in NetworkPolicyPeer:
@@ -152,11 +99,116 @@ func (a *AllPodsAllNamespacesSourceDest) Allows(t *Traffic) bool {
 	return !t.IsExternal
 }
 
+func (a *AllPodsAllNamespacesSourceDest) MarshalJSON() (b []byte, e error) {
+	return json.Marshal(map[string]interface{}{
+		"Type": "all pods in all namespaces",
+	})
+}
+
+// AllPodsInMatchingNamespacesSourceDest models the case where in NetworkPolicyPeer:
+// - PodSelector is nil or empty
+// - NamespaceSelector is not empty
+// - IPBlock is nil
+type AllPodsInMatchingNamespacesSourceDest struct {
+	NamespaceSelector metav1.LabelSelector
+}
+
+func (a *AllPodsInMatchingNamespacesSourceDest) Allows(t *Traffic) bool {
+	if t.IsExternal {
+		return false
+	}
+	return isLabelsMatchLabelSelector(t.NamespaceLabels, a.NamespaceSelector)
+}
+
+func (a *AllPodsInMatchingNamespacesSourceDest) MarshalJSON() (b []byte, e error) {
+	return json.Marshal(map[string]interface{}{
+		"Type":              "all pods in matching namespaces",
+		"NamespaceSelector": a.NamespaceSelector,
+	})
+}
+
+// MatchingPodsInPolicyNamespaceSourceDest models the case where in NetworkPolicyPeer:
+// - PodSelector is not empty
+// - NamespaceSelector is nil
+// - IPBlock is nil
+type MatchingPodsInPolicyNamespaceSourceDest struct {
+	PodSelector metav1.LabelSelector
+	Namespace   string
+}
+
+func (p *MatchingPodsInPolicyNamespaceSourceDest) Allows(t *Traffic) bool {
+	if t.IsExternal {
+		return false
+	}
+	return isLabelsMatchLabelSelector(t.PodLabels, p.PodSelector) && t.Namespace == p.Namespace
+}
+
+func (p *MatchingPodsInPolicyNamespaceSourceDest) MarshalJSON() (b []byte, e error) {
+	return json.Marshal(map[string]interface{}{
+		"Type":        "matchings pods in policy namespace",
+		"PodSelector": p.PodSelector,
+		"Namespace":   p.Namespace,
+	})
+}
+
+// MatchingPodsInAllNamespacesSourceDest models the case where in NetworkPolicyPeer:
+// - PodSelector is not nil
+// - NamespaceSelector is empty (but not nil!)
+// - IPBlock is nil
+type MatchingPodsInAllNamespacesSourceDest struct {
+	PodSelector metav1.LabelSelector
+}
+
+func (p *MatchingPodsInAllNamespacesSourceDest) Allows(t *Traffic) bool {
+	if t.IsExternal {
+		return false
+	}
+	return isLabelsMatchLabelSelector(t.PodLabels, p.PodSelector)
+}
+
+func (p *MatchingPodsInAllNamespacesSourceDest) MarshalJSON() (b []byte, e error) {
+	return json.Marshal(map[string]interface{}{
+		"Type":        "pods in all namespaces",
+		"PodSelector": p.PodSelector,
+	})
+}
+
+// MatchingPodsInMatchingNamespacesSourceDest models the case where in NetworkPolicyPeer:
+// - PodSelector is not nil
+// - NamespaceSelector is not empty
+// - IPBlock is nil
+type MatchingPodsInMatchingNamespacesSourceDest struct {
+	PodSelector       metav1.LabelSelector
+	NamespaceSelector metav1.LabelSelector
+}
+
+func (s *MatchingPodsInMatchingNamespacesSourceDest) Allows(t *Traffic) bool {
+	if t.IsExternal {
+		return false
+	}
+	return isLabelsMatchLabelSelector(t.NamespaceLabels, s.NamespaceSelector) &&
+		isLabelsMatchLabelSelector(t.PodLabels, s.PodSelector)
+}
+
+func (s *MatchingPodsInMatchingNamespacesSourceDest) MarshalJSON() (b []byte, e error) {
+	return json.Marshal(map[string]interface{}{
+		"Type":              "matching pods in matching namespaces",
+		"PodSelector":       s.PodSelector,
+		"NamespaceSelector": s.NamespaceSelector,
+	})
+}
+
 // AnywhereSourceDest models the case where NetworkPolicy(E|In)gressRule.(From|To) is empty
 type AnywhereSourceDest struct{}
 
 func (a *AnywhereSourceDest) Allows(t *Traffic) bool {
 	return true
+}
+
+func (a *AnywhereSourceDest) MarshalJSON() (b []byte, e error) {
+	return json.Marshal(map[string]interface{}{
+		"Type": "anywhere",
+	})
 }
 
 // IPBlockSourceDest models the case where IPBlock is not nil, and both
@@ -166,13 +218,36 @@ type IPBlockSourceDest struct {
 	Except []string
 }
 
-func (a *IPBlockSourceDest) Allows(t *Traffic) bool {
-	//ip, ipnet, err := net.ParseCIDR(t.GetIP())
-	//if err != nil {
-	//	panic(err)
-	//}
-	//panic(errors.Errorf("TODO -- ip %+v, ipnet %+v", ip, ipnet))
-	panic("TODO")
+func (ibsd *IPBlockSourceDest) MarshalJSON() (b []byte, e error) {
+	return json.Marshal(map[string]interface{}{
+		"Type":   "IPBlock",
+		"CIDR":   ibsd.CIDR,
+		"Except": ibsd.Except,
+	})
+}
+
+func (ibsd *IPBlockSourceDest) Allows(t *Traffic) bool {
+	_, cidrNet, err := net.ParseCIDR(ibsd.CIDR)
+	if err != nil {
+		panic(err)
+	}
+	trafficIP := net.ParseIP(t.IP)
+	if trafficIP == nil {
+		panic(errors.Errorf("unable to parse ip %s", t.IP))
+	}
+	if !cidrNet.Contains(trafficIP) {
+		return false
+	}
+	for _, except := range ibsd.Except {
+		_, exceptNet, err := net.ParseCIDR(except)
+		if err != nil {
+			panic(err)
+		}
+		if exceptNet.Contains(trafficIP) {
+			return false
+		}
+	}
+	return true
 }
 
 func isLabelsMatchLabelSelector(labels map[string]string, labelSelector metav1.LabelSelector) bool {

@@ -28,19 +28,19 @@ func ExplainTrafficPeers(tp *TrafficPeers) []string {
 	for _, sd := range tp.SourcesOrDests {
 		var sourceDest, port string
 		switch t := sd.SourceDest.(type) {
-		case *PodsInAllNamespacesSourceDest:
+		case *MatchingPodsInAllNamespacesSourceDest:
 			sourceDest = fmt.Sprintf("pods matching %s in all namespaces",
 				SerializeLabelSelector(t.PodSelector))
-		case *SpecificPodsNamespaceSourceDest:
+		case *MatchingPodsInMatchingNamespacesSourceDest:
 			sourceDest = fmt.Sprintf("pods matching %s in namespaces matching %s",
 				SerializeLabelSelector(t.PodSelector),
 				SerializeLabelSelector(t.NamespaceSelector))
-		case *AllPodsInNamespaceSourceDest:
+		case *AllPodsInMatchingNamespacesSourceDest:
 			sourceDest = fmt.Sprintf("all pods in namespaces matching %s",
 				SerializeLabelSelector(t.NamespaceSelector))
 		case *AllPodsInPolicyNamespaceSourceDest:
 			sourceDest = fmt.Sprintf("all pods in namespace %s", t.Namespace)
-		case *PodsInPolicyNamespaceSourceDest:
+		case *MatchingPodsInPolicyNamespaceSourceDest:
 			sourceDest = fmt.Sprintf("pods matching %s in namespace %s",
 				SerializeLabelSelector(t.PodSelector), t.Namespace)
 		case *AllPodsAllNamespacesSourceDest:

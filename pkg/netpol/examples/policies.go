@@ -68,7 +68,8 @@ func AllowNothingToEmptyIngress(namespace string, targetLabels map[string]string
 			PodSelector: metav1.LabelSelector{
 				MatchLabels: targetLabels,
 			},
-			Ingress: []networkingv1.NetworkPolicyIngressRule{},
+			Ingress:     []networkingv1.NetworkPolicyIngressRule{},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 		},
 	}
 }
@@ -107,6 +108,7 @@ func AllowFromTo(namespace string, fromLabels map[string]string, toLabels map[st
 					},
 				},
 			},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 		},
 	}
 }
@@ -138,6 +140,7 @@ func AllowAllTo(namespace string, toLabels map[string]string) *networkingv1.Netw
 			Ingress: []networkingv1.NetworkPolicyIngressRule{
 				{},
 			},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 		},
 	}
 }
@@ -162,6 +165,7 @@ func AllowNothingToAnything(namespace string) *networkingv1.NetworkPolicy {
 		Spec: networkingv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{},
 			Ingress:     []networkingv1.NetworkPolicyIngressRule{},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 		},
 	}
 }
@@ -199,6 +203,7 @@ func AllowAllWithinNamespace(namespace string) *networkingv1.NetworkPolicy {
 					},
 				},
 			},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 		},
 	}
 }
@@ -237,6 +242,7 @@ func AllowAllTo_Version2(namespace string, targetLabels map[string]string) *netw
 					},
 				},
 			},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 		},
 	}
 }
@@ -267,6 +273,7 @@ func AllowAllTo_Version3(namespace string, targetLabels map[string]string) *netw
 			Ingress: []networkingv1.NetworkPolicyIngressRule{
 				{From: nil},
 			},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 		},
 	}
 }
@@ -286,6 +293,7 @@ func AllowAllTo_Version4(namespace string, toLabels map[string]string) *networki
 					From: []networkingv1.NetworkPolicyPeer{{PodSelector: &metav1.LabelSelector{}, NamespaceSelector: &metav1.LabelSelector{}}},
 				},
 			},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 		},
 	}
 }
@@ -325,6 +333,7 @@ func AllowFromNamespaceTo(namespace string, namespaceLabels map[string]string, t
 					},
 				},
 			},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 		},
 	}
 }
@@ -369,6 +378,7 @@ func AllowFromDifferentNamespaceWithLabelsTo(namespace string, fromLabels, names
 					},
 				},
 			},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 		},
 	}
 }
@@ -401,6 +411,7 @@ func AllowFromAnywhere(namespace string, targetLabels map[string]string) *networ
 					From: []networkingv1.NetworkPolicyPeer{},
 				},
 			},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 		},
 	}
 }
@@ -448,6 +459,7 @@ func AllowSpecificPortTo(namespace string, fromLabels, targetLabels map[string]s
 					},
 				},
 			},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 		},
 	}
 }
@@ -497,6 +509,7 @@ func AllowFromMultipleTo(namespace string, fromLabels []map[string]string, targe
 			Ingress: []networkingv1.NetworkPolicyIngressRule{
 				{From: froms},
 			},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 		},
 	}
 }

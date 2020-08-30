@@ -25,6 +25,7 @@ func (tp *TrafficPeers) Combine(other *TrafficPeers) *TrafficPeers {
 }
 
 func (tp *TrafficPeers) Allows(td *ResolvedTraffic) bool {
+	// TODO is there a better way to represent 'nothing allowed' than an empty slice?
 	for _, sd := range tp.SourcesOrDests {
 		if sd.Allows(td) {
 			return true

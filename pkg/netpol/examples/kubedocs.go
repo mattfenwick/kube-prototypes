@@ -40,6 +40,7 @@ func AccidentalAnd(namespace string, targetLabels, ingressNamespaceLabels, ingre
 					},
 				},
 			},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 		},
 	}
 }
@@ -81,6 +82,7 @@ func AccidentalOr(namespace string, targetLabels, ingressNamespaceLabels, ingres
 					},
 				},
 			},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 		},
 	}
 }

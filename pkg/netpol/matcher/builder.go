@@ -112,20 +112,20 @@ func BuildSourceDest(policyNamespace string, peer networkingv1.NetworkPolicyPeer
 			return &AllPodsAllNamespacesSourceDest{}
 		} else {
 			// nsSel has some stuff
-			return &AllPodsInNamespaceSourceDest{NamespaceSelector: *nsSel}
+			return &AllPodsInMatchingNamespacesSourceDest{NamespaceSelector: *nsSel}
 		}
 	} else {
 		// podSel has some stuff
 		if nsSel == nil {
-			return &PodsInPolicyNamespaceSourceDest{
+			return &MatchingPodsInPolicyNamespaceSourceDest{
 				PodSelector: *podSel,
 				Namespace:   policyNamespace,
 			}
 		} else if isLabelSelectorEmpty(*nsSel) {
-			return &PodsInAllNamespacesSourceDest{PodSelector: *podSel}
+			return &MatchingPodsInAllNamespacesSourceDest{PodSelector: *podSel}
 		} else {
 			// nsSel has some stuff
-			return &SpecificPodsNamespaceSourceDest{
+			return &MatchingPodsInMatchingNamespacesSourceDest{
 				PodSelector:       *podSel,
 				NamespaceSelector: *nsSel,
 			}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/examples"
@@ -47,13 +48,20 @@ func main() {
 			fmt.Printf("policy explanation for %s:\n%s\n\n", np.Name, explanation.PrettyPrint())
 
 			matcherExplanation := matcher.Explain(matcher.BuildNetworkPolicy(createdNp))
-			fmt.Printf("\nmatch explanation: %s\n\n", matcherExplanation)
+			fmt.Printf("\nmatcher explanation: %s\n\n", matcherExplanation)
 
 			reduced := netpol.Reduce(createdNp)
 			fmt.Println(netpol.NodePrettyPrint(reduced))
 			fmt.Println()
 
+			createdNpBytes, err := json.MarshalIndent(createdNp, "", "  ")
+			doOrDie(err)
+			fmt.Printf("created netpol:\n\n%s\n\n", createdNpBytes)
+
 			matcherPolicy := matcher.BuildNetworkPolicy(createdNp)
+			matcherPolicyBytes, err := json.MarshalIndent(matcherPolicy, "", "  ")
+			doOrDie(err)
+			fmt.Printf("created matcher netpol:\n\n%s\n\n", matcherPolicyBytes)
 			isAllowed, allowers, matchingTargets := matcherPolicy.IsTrafficAllowed(&matcher.ResolvedTraffic{
 				Traffic: matcher.NewPodTraffic(
 					map[string]string{
@@ -79,9 +87,9 @@ func main() {
 		}
 
 		netpols := matcher.BuildNetworkPolicies(allCreated)
-		//bytes, err := json.MarshalIndent(netpols, "", "  ")
-		//doOrDie(err)
-		//fmt.Printf("full network policies:\n\n%s\n\n", bytes)
+		bytes, err := json.MarshalIndent(netpols, "", "  ")
+		doOrDie(err)
+		fmt.Printf("full network policies:\n\n%s\n\n", bytes)
 		fmt.Printf("\nexplained:\n%s\n", matcher.Explain(netpols))
 
 		netpolsExamples := matcher.BuildNetworkPolicy(examples.ExampleComplicatedNetworkPolicy())

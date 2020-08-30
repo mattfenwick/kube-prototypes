@@ -107,7 +107,7 @@ func RunCornerCaseTests() {
 
 		It("allow all pods in matching namespace", func() {
 			sd := BuildSourceDest(examples.Namespace, examples.AllowAllPodsInMatchingNamespacesPeer)
-			Expect(sd).To(Equal(&AllPodsInNamespaceSourceDest{NamespaceSelector: *examples.SelectorAB}))
+			Expect(sd).To(Equal(&AllPodsInMatchingNamespacesSourceDest{NamespaceSelector: *examples.SelectorAB}))
 		})
 
 		It("allow all pods in policy namespace -- empty pod selector", func() {
@@ -122,22 +122,22 @@ func RunCornerCaseTests() {
 
 		It("allow all pods in matching namespace -- empty pod selector", func() {
 			sd := BuildSourceDest(examples.Namespace, examples.AllowAllPodsInMatchingNamespacesPeer_EmptyPodSelector)
-			Expect(sd).To(Equal(&AllPodsInNamespaceSourceDest{NamespaceSelector: *examples.SelectorAB}))
+			Expect(sd).To(Equal(&AllPodsInMatchingNamespacesSourceDest{NamespaceSelector: *examples.SelectorAB}))
 		})
 
 		It("allow matching pods in policy namespace", func() {
 			sd := BuildSourceDest(examples.Namespace, examples.AllowMatchingPodsInPolicyNamespacePeer)
-			Expect(sd).To(Equal(&PodsInPolicyNamespaceSourceDest{PodSelector: *examples.SelectorCD, Namespace: examples.Namespace}))
+			Expect(sd).To(Equal(&MatchingPodsInPolicyNamespaceSourceDest{PodSelector: *examples.SelectorCD, Namespace: examples.Namespace}))
 		})
 
 		It("allow matching pods in all namespaces", func() {
 			sd := BuildSourceDest(examples.Namespace, examples.AllowMatchingPodsInAllNamespacesPeer)
-			Expect(sd).To(Equal(&PodsInAllNamespacesSourceDest{PodSelector: *examples.SelectorEF}))
+			Expect(sd).To(Equal(&MatchingPodsInAllNamespacesSourceDest{PodSelector: *examples.SelectorEF}))
 		})
 
 		It("allow matching pods in matching namespace", func() {
 			sd := BuildSourceDest(examples.Namespace, examples.AllowMatchingPodsInMatchingNamespacesPeer)
-			Expect(sd).To(Equal(&SpecificPodsNamespaceSourceDest{
+			Expect(sd).To(Equal(&MatchingPodsInMatchingNamespacesSourceDest{
 				PodSelector:       *examples.SelectorGH,
 				NamespaceSelector: *examples.SelectorAB,
 			}))
