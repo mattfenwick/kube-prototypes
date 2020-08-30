@@ -20,25 +20,36 @@ func (np *NetworkPolicies) AddTarget(target *Target) *Target {
 	return np.Targets[pk]
 }
 
-func (np *NetworkPolicies) TargetsApplyingToPod(podLabels map[string]string, namespaceLabels map[string]string) []*Target {
-	panic("TODO")
-}
-
-func (np *NetworkPolicies) TargetsApplyingToNamespace(namespaceLabels map[string]string) []*Target {
-	panic("TODO")
-}
-
-func (np *NetworkPolicies) IsTrafficAllowed(trafficDirection *ResolvedTraffic) (bool, []*Target) {
-	var matchingTargets []*Target
+func (np *NetworkPolicies) TargetsApplyingToPod(namespace string, podLabels map[string]string) []*Target {
+	var targets []*Target
 	for _, target := range np.Targets {
-		if target.Namespace == trafficDirection.Target.Namespace &&
-			isLabelsMatchLabelSelector(trafficDirection.Target.PodLabels, target.PodSelector) {
-			matchingTargets = append(matchingTargets, target)
+		if target.IsMatch(namespace, podLabels) {
+			targets = append(targets, target)
 		}
 	}
+	return targets
+}
+
+func (np *NetworkPolicies) TargetsApplyingToNamespace(namespace string) []*Target {
+	var targets []*Target
+	for _, t := range np.Targets {
+		if t.Namespace == namespace {
+			targets = append(targets, t)
+		}
+	}
+	return targets
+}
+
+// IsTrafficAllowed returns:
+// - whether the traffic is allowed
+// - which rules allowed the traffic
+// - which rules matched the traffic target
+func (np *NetworkPolicies) IsTrafficAllowed(trafficDirection *ResolvedTraffic) (bool, []*Target, []*Target) {
+	matchingTargets := np.TargetsApplyingToPod(trafficDirection.Target.Namespace, trafficDirection.Target.PodLabels)
+
 	// No targets match => automatic allow
 	if len(matchingTargets) == 0 {
-		return true, nil
+		return true, nil, nil
 	}
 
 	// Check if any matching targets allow this traffic
@@ -49,9 +60,9 @@ func (np *NetworkPolicies) IsTrafficAllowed(trafficDirection *ResolvedTraffic) (
 		}
 	}
 	if len(allowers) > 0 {
-		return true, allowers
+		return true, allowers, matchingTargets
 	}
 
 	// Otherwise, deny
-	return false, nil
+	return false, nil, matchingTargets
 }

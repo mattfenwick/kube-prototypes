@@ -183,7 +183,7 @@ spec:
 func AllowAllWithinNamespace(namespace string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "allow-all-within-Namespace",
+			Name:      "allow-all-within-namespace",
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -309,7 +309,7 @@ spec:
 func AllowFromNamespaceTo(namespace string, namespaceLabels map[string]string, toLabels map[string]string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-from-Namespace-to-%s", LabelString(toLabels)),
+			Name:      fmt.Sprintf("allow-from-namespace-to-%s", LabelString(toLabels)),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -352,7 +352,7 @@ spec:
 func AllowFromDifferentNamespaceWithLabelsTo(namespace string, fromLabels, namespaceLabels, toLabels map[string]string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-from-Namespace-with-labels-%s-to-%s", LabelString(fromLabels), LabelString(toLabels)),
+			Name:      fmt.Sprintf("allow-from-namespace-with-labels-%s-to-%s", LabelString(fromLabels), LabelString(toLabels)),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -592,7 +592,7 @@ spec:
 func AllowNoEgressFromNamespace(namespace string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-no-egress-from-Namespace"),
+			Name:      fmt.Sprintf("allow-no-egress-from-namespace"),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -630,7 +630,7 @@ func AllowEgressToAllNamespacesOnPort(namespace string, targetLabels map[string]
 	portRef := intstr.FromInt(port)
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-egress-to-all-Namespace-from-%s-on-port-%d", LabelString(targetLabels), port),
+			Name:      fmt.Sprintf("allow-egress-to-all-namespace-from-%s-on-port-%d", LabelString(targetLabels), port),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{

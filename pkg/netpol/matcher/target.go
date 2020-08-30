@@ -18,6 +18,14 @@ type Target struct {
 	primaryKey  string
 }
 
+func (t *Target) String() string {
+	return t.GetPrimaryKey()
+}
+
+func (t *Target) IsMatch(namespace string, podLabels map[string]string) bool {
+	return t.Namespace == namespace && isLabelsMatchLabelSelector(podLabels, t.PodSelector)
+}
+
 // Combine creates a new Target combining the egress and ingress rules
 // of the two original targets.  Neither input is modified.
 // The Primary Keys of the two targets must match.

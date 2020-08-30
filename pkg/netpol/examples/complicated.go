@@ -14,7 +14,7 @@ func ExampleComplicatedNetworkPolicy() *networkingv1.NetworkPolicy {
 	port5555 := intstr.FromInt(5555)
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "example-Namespace",
+			Namespace: "example-namespace",
 		},
 		Spec: networkingv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{},

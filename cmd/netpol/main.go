@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/examples"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/matcher"
 	log "github.com/sirupsen/logrus"
+	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	//v1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,19 +46,46 @@ func main() {
 			explanation := netpol.ExplainPolicy(createdNp)
 			fmt.Printf("policy explanation for %s:\n%s\n\n", np.Name, explanation.PrettyPrint())
 
+			matcherExplanation := matcher.Explain(matcher.BuildNetworkPolicy(createdNp))
+			fmt.Printf("\nmatch explanation: %s\n\n", matcherExplanation)
+
 			reduced := netpol.Reduce(createdNp)
 			fmt.Println(netpol.NodePrettyPrint(reduced))
 			fmt.Println()
+
+			matcherPolicy := matcher.BuildNetworkPolicy(createdNp)
+			isAllowed, allowers, matchingTargets := matcherPolicy.IsTrafficAllowed(&matcher.ResolvedTraffic{
+				Traffic: matcher.NewPodTraffic(
+					map[string]string{
+						"app": "bookstore",
+					},
+					map[string]string{},
+					"not-default",
+					true,
+					&matcher.PortProtocol{
+						Protocol: v1.ProtocolTCP,
+						Port:     intstr.FromInt(9800),
+					},
+					"1.2.3.4"),
+				Target: &matcher.ResolvedPodTarget{
+					PodLabels: map[string]string{
+						"app": "web",
+					},
+					NamespaceLabels: nil,
+					Namespace:       "default",
+				},
+			})
+			fmt.Printf("is allowed?  %t\n - allowers: %+v\n - matching targets: %+v\n", isAllowed, allowers, matchingTargets)
 		}
 
 		netpols := matcher.BuildNetworkPolicies(allCreated)
-		bytes, err := json.MarshalIndent(netpols, "", "  ")
-		doOrDie(err)
-		fmt.Printf("full network policies:\n\n%s\n\n", bytes)
-		fmt.Printf("explained:\n%s\n", matcher.Explain(netpols))
+		//bytes, err := json.MarshalIndent(netpols, "", "  ")
+		//doOrDie(err)
+		//fmt.Printf("full network policies:\n\n%s\n\n", bytes)
+		fmt.Printf("\nexplained:\n%s\n", matcher.Explain(netpols))
 
-		netpolsExamples := matcher.BuildNetworkPolicies([]*networkingv1.NetworkPolicy{examples.ExampleComplicatedNetworkPolicy()})
-		fmt.Printf("examples explained:\n%s\n", matcher.Explain(netpolsExamples))
+		netpolsExamples := matcher.BuildNetworkPolicy(examples.ExampleComplicatedNetworkPolicy())
+		fmt.Printf("complicated example explained:\n%s\n", matcher.Explain(netpolsExamples))
 	}
 
 	if false {
