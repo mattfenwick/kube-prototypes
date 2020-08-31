@@ -50,8 +50,11 @@ func (aepm *AnyExternalPeerMatcher) IsPeerMatch(peer *Peer) bool {
 //   - use case: match by Namespace but ignore Nodes and Pods: specify a non-empty Namespace selector,
 //     and empty Node and Pod selectors
 type InternalLabelsPeerMatcher struct {
+	Namespace         string
 	NamespaceSelector metav1.LabelSelector
+	Node              string
 	NodeSelector      metav1.LabelSelector
+	Pod               string
 	PodSelector       metav1.LabelSelector
 }
 
@@ -61,7 +64,19 @@ func (ilpm *InternalLabelsPeerMatcher) IsPeerMatch(peer *Peer) bool {
 	}
 	return kube.IsLabelsMatchLabelSelector(peer.Internal.NamespaceLabels, ilpm.NamespaceSelector) &&
 		kube.IsLabelsMatchLabelSelector(peer.Internal.NodeLabels, ilpm.NodeSelector) &&
-		kube.IsLabelsMatchLabelSelector(peer.Internal.PodLabels, ilpm.PodSelector)
+		kube.IsLabelsMatchLabelSelector(peer.Internal.PodLabels, ilpm.PodSelector) &&
+		kube.IsNameMatch(peer.Internal.Namespace, ilpm.Namespace) &&
+		kube.IsNameMatch(peer.Internal.Node, ilpm.Node) &&
+		kube.IsNameMatch(peer.Internal.Pod, ilpm.Pod)
+}
+
+type SameNamespacePeerMatcher struct{}
+
+func (snpm *SameNamespacePeerMatcher) IsPeerMatch(peer *Peer) bool {
+	if peer.Internal == nil {
+		return false
+	}
+	panic("TODO -- return peer.Internal.Namespace == target.Namespace")
 }
 
 // IPBlockPeerMatcher matches based on the peer IP

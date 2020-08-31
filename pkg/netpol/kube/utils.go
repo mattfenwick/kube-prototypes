@@ -7,6 +7,18 @@ import (
 	"net"
 )
 
+// IsNameMatch follows the kube pattern of "empty string means matches All"
+// It will return:
+//   if matcher is empty: true
+//   if objectName and matcher are the same: true
+//   otherwise false
+func IsNameMatch(objectName string, matcher string) bool {
+	if matcher == "" {
+		return true
+	}
+	return objectName == matcher
+}
+
 // IsLabelsMatchLabelSelector matches labels to a kube LabelSelector.
 // From the docs:
 // > A label selector is a label query over a set of resources. The result of matchLabels and

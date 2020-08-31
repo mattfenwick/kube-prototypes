@@ -16,11 +16,11 @@ type Traffic struct {
 type Peer struct {
 	Internal *struct {
 		PodLabels       map[string]string
-		PodName         string
+		Pod             string
 		NamespaceLabels map[string]string
 		Namespace       string
 		NodeLabels      map[string]string
-		NodeName        string
+		Node            string
 	}
 	IP string
 }

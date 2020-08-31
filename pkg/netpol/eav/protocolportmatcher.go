@@ -5,12 +5,17 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-type ProtoportMatcher struct {
+var AnyProtocolPortMatcher = &ProtocolPortMatcher{
+	PortMatcher:     &AnyPortMatcher{},
+	ProtocolMatcher: &AnyProtocolMatcher{},
+}
+
+type ProtocolPortMatcher struct {
 	PortMatcher     PortMatcher
 	ProtocolMatcher ProtocolMatcher
 }
 
-func (pm *ProtoportMatcher) IsProtocolPortMatch(protocol v1.Protocol, port intstr.IntOrString) bool {
+func (pm *ProtocolPortMatcher) IsProtocolPortMatch(protocol v1.Protocol, port intstr.IntOrString) bool {
 	return pm.ProtocolMatcher.IsProtocolMatch(protocol) && pm.PortMatcher.IsPortMatch(port)
 }
 
