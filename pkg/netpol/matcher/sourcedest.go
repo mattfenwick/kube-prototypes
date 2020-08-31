@@ -2,9 +2,9 @@ package matcher
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
+	"github.com/mattfenwick/kube-prototypes/pkg/netpol/kube"
+	v1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net"
 )
 
 type SourceDestAndPort struct {
@@ -117,7 +117,7 @@ func (a *AllPodsInMatchingNamespacesSourceDest) Allows(t *Traffic) bool {
 	if t.IsExternal {
 		return false
 	}
-	return isLabelsMatchLabelSelector(t.NamespaceLabels, a.NamespaceSelector)
+	return kube.IsLabelsMatchLabelSelector(t.NamespaceLabels, a.NamespaceSelector)
 }
 
 func (a *AllPodsInMatchingNamespacesSourceDest) MarshalJSON() (b []byte, e error) {
@@ -140,7 +140,7 @@ func (p *MatchingPodsInPolicyNamespaceSourceDest) Allows(t *Traffic) bool {
 	if t.IsExternal {
 		return false
 	}
-	return isLabelsMatchLabelSelector(t.PodLabels, p.PodSelector) && t.Namespace == p.Namespace
+	return kube.IsLabelsMatchLabelSelector(t.PodLabels, p.PodSelector) && t.Namespace == p.Namespace
 }
 
 func (p *MatchingPodsInPolicyNamespaceSourceDest) MarshalJSON() (b []byte, e error) {
@@ -163,7 +163,7 @@ func (p *MatchingPodsInAllNamespacesSourceDest) Allows(t *Traffic) bool {
 	if t.IsExternal {
 		return false
 	}
-	return isLabelsMatchLabelSelector(t.PodLabels, p.PodSelector)
+	return kube.IsLabelsMatchLabelSelector(t.PodLabels, p.PodSelector)
 }
 
 func (p *MatchingPodsInAllNamespacesSourceDest) MarshalJSON() (b []byte, e error) {
@@ -186,8 +186,8 @@ func (s *MatchingPodsInMatchingNamespacesSourceDest) Allows(t *Traffic) bool {
 	if t.IsExternal {
 		return false
 	}
-	return isLabelsMatchLabelSelector(t.NamespaceLabels, s.NamespaceSelector) &&
-		isLabelsMatchLabelSelector(t.PodLabels, s.PodSelector)
+	return kube.IsLabelsMatchLabelSelector(t.NamespaceLabels, s.NamespaceSelector) &&
+		kube.IsLabelsMatchLabelSelector(t.PodLabels, s.PodSelector)
 }
 
 func (s *MatchingPodsInMatchingNamespacesSourceDest) MarshalJSON() (b []byte, e error) {
@@ -214,83 +214,18 @@ func (a *AnywhereSourceDest) MarshalJSON() (b []byte, e error) {
 // IPBlockSourceDest models the case where IPBlock is not nil, and both
 // PodSelector and NamespaceSelector are nil
 type IPBlockSourceDest struct {
-	CIDR   string
-	Except []string
+	// required
+	IPBlock *v1.IPBlock
 }
 
 func (ibsd *IPBlockSourceDest) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type":   "IPBlock",
-		"CIDR":   ibsd.CIDR,
-		"Except": ibsd.Except,
+		"CIDR":   ibsd.IPBlock.CIDR,
+		"Except": ibsd.IPBlock.Except,
 	})
 }
 
 func (ibsd *IPBlockSourceDest) Allows(t *Traffic) bool {
-	_, cidrNet, err := net.ParseCIDR(ibsd.CIDR)
-	if err != nil {
-		panic(err)
-	}
-	trafficIP := net.ParseIP(t.IP)
-	if trafficIP == nil {
-		panic(errors.Errorf("unable to parse ip %s", t.IP))
-	}
-	if !cidrNet.Contains(trafficIP) {
-		return false
-	}
-	for _, except := range ibsd.Except {
-		_, exceptNet, err := net.ParseCIDR(except)
-		if err != nil {
-			panic(err)
-		}
-		if exceptNet.Contains(trafficIP) {
-			return false
-		}
-	}
-	return true
-}
-
-func isLabelsMatchLabelSelector(labels map[string]string, labelSelector metav1.LabelSelector) bool {
-	for key, val := range labelSelector.MatchLabels {
-		if labels[key] == val {
-			return true
-		}
-	}
-	for _, exp := range labelSelector.MatchExpressions {
-		switch exp.Operator {
-		case metav1.LabelSelectorOpIn:
-			val, ok := labels[exp.Key]
-			if !ok {
-				return false
-			}
-			for _, v := range exp.Values {
-				if v == val {
-					return true
-				}
-			}
-			return false
-		case metav1.LabelSelectorOpNotIn:
-			val, ok := labels[exp.Key]
-			if !ok {
-				// see https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#resources-that-support-set-based-requirements
-				//   even for NotIn -- if the key isn't there, it's not a match
-				return false
-			}
-			for _, v := range exp.Values {
-				if v == val {
-					return false
-				}
-			}
-			return true
-		case metav1.LabelSelectorOpExists:
-			_, ok := labels[exp.Key]
-			return !ok
-		case metav1.LabelSelectorOpDoesNotExist:
-			_, ok := labels[exp.Key]
-			return !ok
-		default:
-			panic("invalid operator")
-		}
-	}
-	return false
+	return kube.IsIPBlockMatchForIP(t.IP, ibsd.IPBlock)
 }

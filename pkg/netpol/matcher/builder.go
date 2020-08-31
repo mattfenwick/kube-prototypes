@@ -98,10 +98,7 @@ func isLabelSelectorEmpty(l metav1.LabelSelector) bool {
 
 func BuildSourceDest(policyNamespace string, peer networkingv1.NetworkPolicyPeer) SourceDest {
 	if peer.IPBlock != nil {
-		return &IPBlockSourceDest{
-			CIDR:   peer.IPBlock.CIDR,
-			Except: peer.IPBlock.Except,
-		}
+		return &IPBlockSourceDest{peer.IPBlock}
 	}
 	podSel := peer.PodSelector
 	nsSel := peer.NamespaceSelector

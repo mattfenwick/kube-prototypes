@@ -48,7 +48,7 @@ func ExplainTrafficPeers(tp *TrafficPeers) []string {
 		case *AnywhereSourceDest:
 			sourceDest = "anywhere: all pods in all namespaces and all IPs"
 		case *IPBlockSourceDest:
-			sourceDest = fmt.Sprintf("IPBlock: cidr %s, except %+v", t.CIDR, t.Except)
+			sourceDest = fmt.Sprintf("IPBlock: cidr %s, except %+v", t.IPBlock.CIDR, t.IPBlock.Except)
 		default:
 			panic(errors.Errorf("unexpected SourceDest type %T", t))
 		}

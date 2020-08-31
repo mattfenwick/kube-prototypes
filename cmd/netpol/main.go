@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/examples"
+	"github.com/mattfenwick/kube-prototypes/pkg/netpol/kube"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/matcher"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -31,7 +32,7 @@ func main() {
 	//	Namespace: "",
 	//}
 
-	k8s, err := netpol.NewKubernetes()
+	k8s, err := kube.NewKubernetes()
 	doOrDie(err)
 
 	if true {
@@ -113,7 +114,7 @@ func doOrDie(err error) {
 	}
 }
 
-func probeContainerToContainer(ns string, k8s *netpol.Kubernetes, port int) {
+func probeContainerToContainer(ns string, k8s *kube.Kubernetes, port int) {
 	pods, err := k8s.ClientSet.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 	doOrDie(err)
 	var items []string
@@ -132,7 +133,7 @@ func probeContainerToContainer(ns string, k8s *netpol.Kubernetes, port int) {
 				for _, toCont := range toPod.Spec.Containers {
 					log.Infof("Probing in ns %s: %s, %s", ns, fromPod.Name, toPod.Name)
 					//connected, err := k8s.ProbeWithPod(fromPod, toPod, port)
-					connected, curlExitCode, err := k8s.ProbeFromContainerToPod(&netpol.ProbeFromContainerToPod{
+					connected, curlExitCode, err := k8s.ProbeFromContainerToPod(&kube.ProbeFromContainerToPod{
 						FromNamespace:      fromPod.Namespace,
 						FromPod:            fromPod.Name,
 						FromContainer:      fromContainer,
@@ -158,7 +159,7 @@ func probeContainerToContainer(ns string, k8s *netpol.Kubernetes, port int) {
 	table.Table().Render()
 }
 
-func probeContainerToService(namespace string, k8s *netpol.Kubernetes) {
+func probeContainerToService(namespace string, k8s *kube.Kubernetes) {
 	pods, err := k8s.ClientSet.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
 	doOrDie(err)
 
@@ -185,7 +186,7 @@ func probeContainerToService(namespace string, k8s *netpol.Kubernetes) {
 			for _, toService := range services.Items {
 				log.Infof("Probing in ns %s: %s, %s", namespace, fromPod.Name, toService.Name)
 				//connected, err := k8s.ProbeWithPod(fromPod, toPod, port)
-				connected, curlExitCode, err := k8s.ProbeFromContainerToPod(&netpol.ProbeFromContainerToPod{
+				connected, curlExitCode, err := k8s.ProbeFromContainerToPod(&kube.ProbeFromContainerToPod{
 					FromNamespace:      fromPod.Namespace,
 					FromPod:            fromPod.Name,
 					FromContainer:      fromContainer,

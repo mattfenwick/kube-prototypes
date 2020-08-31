@@ -1,4 +1,4 @@
-package netpol
+package kube
 
 import (
 	"bytes"

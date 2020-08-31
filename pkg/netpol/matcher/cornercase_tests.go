@@ -146,9 +146,10 @@ func RunCornerCaseTests() {
 		It("allow ipblock", func() {
 			sd := BuildSourceDest(examples.Namespace, examples.AllowIPBlockPeer)
 			Expect(sd).To(Equal(&IPBlockSourceDest{
-				CIDR: "10.0.0.1/24",
-				Except: []string{
-					"10.0.0.2",
+				&networkingv1.IPBlock{CIDR: "10.0.0.1/24",
+					Except: []string{
+						"10.0.0.2",
+					},
 				},
 			}))
 		})
