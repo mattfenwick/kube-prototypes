@@ -81,6 +81,18 @@ func IsLabelsMatchLabelSelector(labels map[string]string, labelSelector metav1.L
 	return true
 }
 
+func IsIPInCIDR(ip string, cidr string) bool {
+	_, cidrNet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		panic(err)
+	}
+	trafficIP := net.ParseIP(ip)
+	if trafficIP == nil {
+		panic(errors.Errorf("unable to parse ip %s", ip))
+	}
+	return cidrNet.Contains(trafficIP)
+}
+
 // IsIPBlockMatchForIP is completely untested.  TODO!
 func IsIPBlockMatchForIP(ip string, ipBlock *v1.IPBlock) bool {
 	_, cidrNet, err := net.ParseCIDR(ipBlock.CIDR)

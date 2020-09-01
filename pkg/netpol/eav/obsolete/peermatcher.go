@@ -1,4 +1,4 @@
-package eav
+package obsolete
 
 import (
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/kube"

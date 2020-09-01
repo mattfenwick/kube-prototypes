@@ -1,18 +1,9 @@
-package eav
+package obsolete
 
 import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
-
-type InternalPeer struct {
-	PodLabels       map[string]string
-	Pod             string
-	NamespaceLabels map[string]string
-	Namespace       string
-	NodeLabels      map[string]string
-	Node            string
-}
 
 type Traffic struct {
 	Source      *Peer
@@ -23,8 +14,15 @@ type Traffic struct {
 }
 
 type Peer struct {
-	Internal *InternalPeer
-	IP       string
+	Internal *struct {
+		PodLabels       map[string]string
+		Pod             string
+		NamespaceLabels map[string]string
+		Namespace       string
+		NodeLabels      map[string]string
+		Node            string
+	}
+	IP string
 }
 
 func (tc *Peer) IsExternal() bool {

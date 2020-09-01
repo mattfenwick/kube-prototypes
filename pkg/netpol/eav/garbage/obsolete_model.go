@@ -1,23 +1,23 @@
-package eav
+package garbage
 
 import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-// Obsolete_Traffic represents a request from or to a target's source/dest counterpart
-type Obsolete_Traffic struct {
-	Counterpart Obsolete_TrafficCounterpart
+// Garbage_Traffic represents a request from or to a target's source/dest counterpart
+type Garbage_Traffic struct {
+	Counterpart Garbage_TrafficCounterpart
 
 	// ResolvedTarget is the object of a network policy -- the ??pod?? that
 	//   is potentially issuing an egress or receiving an ingress
 	// It sounds like it's not possible to make network policies targeting services
 	//   unless you think of resolving services down to pods and adding those into
 	//   iptables -- which CNIs may do
-	ResolvedTarget Obsolete_Target
+	ResolvedTarget Garbage_Target
 }
 
-type Obsolete_TrafficCounterpart struct {
+type Garbage_TrafficCounterpart struct {
 	// InternalSourceDest is the counterpart that's communicating with Peer.
 	//   If this is a pod in the same cluster, gather up information about that
 	//   pod -- labels, namespace, etc.  Otherwise, use nil for this field which
@@ -34,13 +34,13 @@ type Obsolete_TrafficCounterpart struct {
 	IP        string
 }
 
-type Obsolete_Target struct {
+type Garbage_Target struct {
 	PodLabels       map[string]string
 	NamespaceLabels map[string]string
 	Namespace       string
 }
 
-func (tc *Obsolete_TrafficCounterpart) IsExternal() bool {
+func (tc *Garbage_TrafficCounterpart) IsExternal() bool {
 	return tc.InternalSourceDest == nil
 }
 
@@ -50,6 +50,6 @@ type NetworkPolicyRule struct {
 	//   could also split into Peer/Counterpart/Traffic matcher
 	// TODO can't serialize arbitrary functions -- need to model matchers as data
 	//
-	TargetMatcher      func(Obsolete_Target) bool
-	CounterpartMatcher func(Obsolete_TrafficCounterpart) bool
+	TargetMatcher      func(Garbage_Target) bool
+	CounterpartMatcher func(Garbage_TrafficCounterpart) bool
 }
