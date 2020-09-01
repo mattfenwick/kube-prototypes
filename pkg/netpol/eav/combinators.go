@@ -126,6 +126,7 @@ func (ipm *IPMatcher) Matches(t *Traffic) bool {
 }
 
 func IPBlockMatcher(selector Selector, cidr string, except []string) TrafficMatcher {
+	// TODO wow this is unpleasant, is there a way to not have to do this?
 	var values []interface{}
 	for _, e := range except {
 		values = append(values, e)
@@ -135,4 +136,12 @@ func IPBlockMatcher(selector Selector, cidr string, except []string) TrafficMatc
 		&Not{Term: &InArray{
 			Selector: selector,
 			Values:   values}})
+}
+
+type Bool struct {
+	Selector Selector
+}
+
+func (b *Bool) Matches(t *Traffic) bool {
+	return b.Selector(t).(bool)
 }

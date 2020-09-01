@@ -12,8 +12,8 @@ type TrafficMatcher interface {
 // NothingMatcher matches nothing
 var NothingMatcher = NewAny()
 
-// AnythingMatcher matches anything
-var AnythingMatcher = NewAll()
+// EverythingMatcher matches everything
+var EverythingMatcher = NewAll()
 
 // AnyInternalMatcher matches any pod in the same kube clusters
 var AnyInternalMatcher = NewEqual(SourceIsExternalSelector, DestinationIsExternalSelector, ConstantSelector(false))
