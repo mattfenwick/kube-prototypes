@@ -225,3 +225,55 @@ var AnthosAllowKubeDNSEgress = &Policy{
 	),
 	Directive: DirectiveAllow,
 }
+
+var AnthosAllowKubeDNSIngressNetworkPolicy = &networkingv1.NetworkPolicy{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "allow-kube-dns-egress",
+		Namespace: "kube-system",
+		//Annotations: map[string]string{},
+		//#configmanagement.gke.io/cluster-selector: ${CLUSTER_SELECTOR}
+	},
+	Spec: networkingv1.NetworkPolicySpec{
+		PodSelector: metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"k8s-app": "kube-dns",
+			},
+		},
+		Ingress: []networkingv1.NetworkPolicyIngressRule{
+			{
+				Ports: []networkingv1.NetworkPolicyPort{
+					{Protocol: &tcp, Port: &port53},
+					{Protocol: &udp, Port: &port53},
+				},
+				From: []networkingv1.NetworkPolicyPeer{
+					{
+						PodSelector:       &metav1.LabelSelector{},
+						NamespaceSelector: &metav1.LabelSelector{},
+					},
+				},
+			},
+		},
+		PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+	},
+}
+
+var AnthosAllowKubeDNSIngress = &Policy{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "allow-kube-dns-ingress",
+		Namespace: "kube-system",
+		//Annotations:                nil,
+		//#configmanagement.gke.io/cluster-selector: ${CLUSTER_SELECTOR}
+	},
+	TrafficMatcher: NewAll(
+		DestinationNamespaceMatcher("kube-system"),
+		&LabelMatcher{
+			Selector: DestinationNamespaceLabelsSelector,
+			Key:      "k8s-app",
+			Value:    "kube-dns",
+		},
+		NewAny(ProtocolMatcher(v1.ProtocolTCP), ProtocolMatcher(v1.ProtocolUDP)),
+		NewEqual(PortSelector, ConstantSelector(53)),
+		&Not{&Bool{SourceIsExternalSelector}},
+	),
+	Directive: DirectiveAllow,
+}
