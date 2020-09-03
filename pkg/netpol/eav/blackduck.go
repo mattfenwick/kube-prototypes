@@ -8,6 +8,7 @@ type Blackduck struct {
 }
 
 func (bd *Blackduck) DenyAll() *Policy {
+	// Explanation: blanket (TODO: low priority) deny of *everything* to and from Blackduck
 	return &Policy{
 		TrafficMatcher: NewAny(
 			NewEqual(
@@ -21,8 +22,9 @@ func (bd *Blackduck) DenyAll() *Policy {
 }
 
 func (bd *Blackduck) AllowDNSOnTCP() *Policy {
+	// Explanation: allow DNS from the Blackduck namespace
 	return &Policy{
-		TrafficMatcher: NewAny(
+		TrafficMatcher: NewAll(
 			NewEqual(
 				SourceNamespaceSelector,
 				ConstantSelector(bd.Namespace)),
@@ -33,8 +35,10 @@ func (bd *Blackduck) AllowDNSOnTCP() *Policy {
 }
 
 func (bd *Blackduck) AllowEgressToKB() *Policy {
+	// Explanation: if source is the Blackduck namespace, and the destination
+	// is the KB API, allow the traffic
 	return &Policy{
-		TrafficMatcher: NewAny(
+		TrafficMatcher: NewAll(
 			NewEqual(
 				SourceNamespaceSelector,
 				ConstantSelector(bd.Namespace)),
@@ -46,8 +50,10 @@ func (bd *Blackduck) AllowEgressToKB() *Policy {
 }
 
 func (bd *Blackduck) AllowBDNamespaceCommunication() *Policy {
+	// Explanation: if both source and destination are the Blackduck namespace,
+	// allow the traffic
 	return &Policy{
-		TrafficMatcher: NewAny(
+		TrafficMatcher: NewAll(
 			NewEqual(
 				SourceNamespaceSelector,
 				ConstantSelector(bd.Namespace)),

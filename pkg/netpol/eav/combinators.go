@@ -3,6 +3,7 @@ package eav
 import (
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/kube"
 	"github.com/pkg/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"reflect"
 )
 
@@ -144,4 +145,43 @@ type Bool struct {
 
 func (b *Bool) Matches(t *Traffic) bool {
 	return b.Selector(t).(bool)
+}
+
+func KubeMatchLabels(selector Selector, labels map[string]string) TrafficMatcher {
+	var terms []TrafficMatcher
+	for key, val := range labels {
+		terms = append(terms, &LabelMatcher{
+			Selector: selector,
+			Key:      key,
+			Value:    val,
+		})
+	}
+	return NewAll(terms...)
+}
+
+type KubeMatchExpressionMatcher struct {
+	Selector   Selector
+	Expression metav1.LabelSelectorRequirement
+}
+
+func (kmem *KubeMatchExpressionMatcher) Matches(t *Traffic) bool {
+	labels := kmem.Selector(t).(map[string]string)
+	return kube.IsMatchExpressionMatchForLabels(labels, kmem.Expression)
+}
+
+func KubeMatchExpressions(selector Selector, mes []metav1.LabelSelectorRequirement) TrafficMatcher {
+	var terms []TrafficMatcher
+	for _, exp := range mes {
+		terms = append(terms, &KubeMatchExpressionMatcher{
+			Selector:   selector,
+			Expression: exp,
+		})
+	}
+	return NewAll(terms...)
+}
+
+func KubeMatchLabelSelector(selector Selector, ls metav1.LabelSelector) TrafficMatcher {
+	return NewAll(
+		KubeMatchLabels(selector, ls.MatchLabels),
+		KubeMatchExpressions(selector, ls.MatchExpressions))
 }

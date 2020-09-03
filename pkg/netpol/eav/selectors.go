@@ -19,6 +19,7 @@ var (
 	ProtocolSelector Selector = func(traffic *Traffic) interface{} { return traffic.Protocol }
 	PortSelector     Selector = func(traffic *Traffic) interface{} { return traffic.Port }
 
+	SourceSelector           Selector = func(traffic *Traffic) interface{} { return traffic.Source }
 	SourceIPSelector         Selector = func(traffic *Traffic) interface{} { return traffic.Source.IP }
 	SourceIsExternalSelector Selector = func(traffic *Traffic) interface{} { return traffic.Source.IsExternal() }
 	SourceNamespaceSelector  Selector = func(traffic *Traffic) interface{} {
@@ -40,6 +41,7 @@ var (
 		return internalHelper(traffic.Source, func(ip *InternalPeer) interface{} { return ip.NodeLabels })
 	}
 
+	DestSelector                  Selector = func(traffic *Traffic) interface{} { return traffic.Destination }
 	DestinationIPSelector         Selector = func(traffic *Traffic) interface{} { return traffic.Destination.IP }
 	DestinationIsExternalSelector Selector = func(traffic *Traffic) interface{} { return traffic.Destination.IsExternal() }
 	DestinationNamespaceSelector  Selector = func(traffic *Traffic) interface{} {

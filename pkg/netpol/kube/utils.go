@@ -19,6 +19,43 @@ func IsNameMatch(objectName string, matcher string) bool {
 	return objectName == matcher
 }
 
+func IsMatchExpressionMatchForLabels(labels map[string]string, exp metav1.LabelSelectorRequirement) bool {
+	switch exp.Operator {
+	case metav1.LabelSelectorOpIn:
+		val, ok := labels[exp.Key]
+		if !ok {
+			return false
+		}
+		for _, v := range exp.Values {
+			if v == val {
+				return true
+			}
+		}
+		return false
+	case metav1.LabelSelectorOpNotIn:
+		val, ok := labels[exp.Key]
+		if !ok {
+			// see https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#resources-that-support-set-based-requirements
+			//   even for NotIn -- if the key isn't there, it's not a match
+			return false
+		}
+		for _, v := range exp.Values {
+			if v == val {
+				return false
+			}
+		}
+		return true
+	case metav1.LabelSelectorOpExists:
+		_, ok := labels[exp.Key]
+		return ok
+	case metav1.LabelSelectorOpDoesNotExist:
+		_, ok := labels[exp.Key]
+		return !ok
+	default:
+		panic("invalid operator")
+	}
+}
+
 // IsLabelsMatchLabelSelector matches labels to a kube LabelSelector.
 // From the docs:
 // > A label selector is a label query over a set of resources. The result of matchLabels and
@@ -36,47 +73,12 @@ func IsLabelsMatchLabelSelector(labels map[string]string, labelSelector metav1.L
 	// From the docs: "The requirements are ANDed."
 	//   Therefore, all MatchExpressions must be matched.
 	for _, exp := range labelSelector.MatchExpressions {
-		switch exp.Operator {
-		case metav1.LabelSelectorOpIn:
-			val, ok := labels[exp.Key]
-			if !ok {
-				return false
-			}
-			isFound := false
-			for _, v := range exp.Values {
-				if v == val {
-					isFound = true
-				}
-			}
-			if !isFound {
-				return false
-			}
-		case metav1.LabelSelectorOpNotIn:
-			val, ok := labels[exp.Key]
-			if !ok {
-				// see https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#resources-that-support-set-based-requirements
-				//   even for NotIn -- if the key isn't there, it's not a match
-				return false
-			}
-			for _, v := range exp.Values {
-				if v == val {
-					return false
-				}
-			}
-		case metav1.LabelSelectorOpExists:
-			_, ok := labels[exp.Key]
-			if !ok {
-				return false
-			}
-		case metav1.LabelSelectorOpDoesNotExist:
-			_, ok := labels[exp.Key]
-			if ok {
-				return false
-			}
-		default:
-			panic("invalid operator")
+		isMatch := IsMatchExpressionMatchForLabels(labels, exp)
+		if !isMatch {
+			return false
 		}
 	}
+
 	// From the docs: "An empty label selector matches all objects."
 	return true
 }
