@@ -195,7 +195,7 @@ var AnthosAllowKubeDNSEgress = &Policy{
 		NewAny(
 			NewAll(
 				IPBlockMatcher(DestinationIPSelector, "169.254.169.254/32", []string{}),
-				NewEqual(PortSelector, ConstantSelector(53)),
+				NumberedPortMatcher(53),
 				NewAny(
 					ProtocolMatcher(v1.ProtocolTCP),
 					ProtocolMatcher(v1.ProtocolUDP),
@@ -203,22 +203,22 @@ var AnthosAllowKubeDNSEgress = &Policy{
 			),
 			NewAll(
 				IPBlockMatcher(DestinationIPSelector, "${APISERVER_IP}/32", []string{}),
-				NewEqual(PortSelector, ConstantSelector(443)),
+				NumberedPortMatcher(443),
 				ProtocolMatcher(v1.ProtocolTCP),
 			),
 			NewAll(
 				IPBlockMatcher(DestinationIPSelector, "${GOOGLEAPIS_CIDR}", []string{}),
-				NewEqual(PortSelector, ConstantSelector(443)),
+				NumberedPortMatcher(443),
 				ProtocolMatcher(v1.ProtocolTCP),
 			),
 			NewAll(
 				IPBlockMatcher(DestinationIPSelector, "169.254.169.254/32", []string{}),
-				NewEqual(PortSelector, ConstantSelector(80)),
+				NumberedPortMatcher(80),
 				ProtocolMatcher(v1.ProtocolTCP),
 			),
 			NewAll(
 				IPBlockMatcher(DestinationIPSelector, "127.0.0.1/32", []string{}),
-				NewEqual(PortSelector, ConstantSelector(988)),
+				NumberedPortMatcher(988),
 				ProtocolMatcher(v1.ProtocolTCP),
 			),
 		),
@@ -272,8 +272,8 @@ var AnthosAllowKubeDNSIngress = &Policy{
 			Value:    "kube-dns",
 		},
 		NewAny(ProtocolMatcher(v1.ProtocolTCP), ProtocolMatcher(v1.ProtocolUDP)),
-		NewEqual(PortSelector, ConstantSelector(53)),
-		&Not{&Bool{SourceIsExternalSelector}},
+		NumberedPortMatcher(53),
+		SourceIsInternalMatcher,
 	),
 	Directive: DirectiveAllow,
 }

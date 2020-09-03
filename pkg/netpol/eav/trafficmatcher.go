@@ -21,6 +21,14 @@ var AnyInternalMatcher = NewEqual(SourceIsExternalSelector, DestinationIsExterna
 // AnyExternalMatcher matches anything NOT in the same kube cluster
 var AnyExternalMatcher = NewEqual(SourceIsExternalSelector, DestinationIsExternalSelector, ConstantSelector(true))
 
+var (
+	SourceIsExternalMatcher = &Bool{SourceIsExternalSelector}
+	SourceIsInternalMatcher = &Not{SourceIsExternalMatcher}
+
+	DestinationIsExternalMatcher = &Bool{DestinationIsExternalSelector}
+	DestinationIsInternalMatcher = &Not{DestinationIsExternalMatcher}
+)
+
 // SourceNamespaceMatcher matches Traffic whose source is internal and has a namespace of ns
 func SourceNamespaceMatcher(ns string) *Equal {
 	return NewEqual(SourceNamespaceSelector, ConstantSelector(ns))
