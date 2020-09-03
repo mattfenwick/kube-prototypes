@@ -1,5 +1,7 @@
 package eav
 
+import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 type Directive string
 
 const (
@@ -8,6 +10,8 @@ const (
 )
 
 type Policy struct {
+	metav1.ObjectMeta
+
 	TrafficMatcher TrafficMatcher
 	Directive      Directive
 }
