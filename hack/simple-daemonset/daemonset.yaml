@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: netpol-server
+  labels:
+    component: netpol-server
+spec:
+  selector:
+    matchLabels:
+      name: netpol-server
+  template:
+    metadata:
+      labels:
+        name: netpol-server
+        component: netpol-server
+    spec:
+      tolerations:
+        # this toleration is to have the daemonset runnable on master nodes
+        # remove it if your masters can't run pods
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+      containers:
+        - name: netpol-server
+          image: docker.io/mfenwick100/kube-prototypes-client-server:latest
+          imagePullPolicy: Always
+          command:
+            - ./http-tester
+          args:
+            - "server"
+            - "7890"
+          ports:
+            - containerPort: 7890
+              protocol: TCP
+          resources:
+            limits:
+              memory: 50Mi
+            requests:
+              cpu: 50m
+              memory: 50Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    component: netpol-server
+  name: netpol-server
+spec:
+  ports:
+    - port: 7890
+      name: port-7890
+  selector:
+    component: netpol-server
