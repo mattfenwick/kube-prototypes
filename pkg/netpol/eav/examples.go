@@ -226,6 +226,7 @@ var AnthosAllowKubeDNSEgress = &Policy{
 	Directive: DirectiveAllow,
 }
 
+// See: https://github.com/GoogleCloudPlatform/anthos-security-blueprints/blob/master/restricting-traffic/kube-system/allow-kubedns-egress.yaml
 var AnthosAllowKubeDNSIngressNetworkPolicy = &networkingv1.NetworkPolicy{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "allow-kube-dns-egress",
@@ -257,6 +258,7 @@ var AnthosAllowKubeDNSIngressNetworkPolicy = &networkingv1.NetworkPolicy{
 	},
 }
 
+// See: https://github.com/GoogleCloudPlatform/anthos-security-blueprints/blob/master/restricting-traffic/kube-system/allow-kubedns-ingress.yaml
 var AnthosAllowKubeDNSIngress = &Policy{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "allow-kube-dns-ingress",
