@@ -1,6 +1,9 @@
 package eav
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 type Directive string
 
@@ -11,8 +14,13 @@ const (
 
 type Policy struct {
 	metav1.ObjectMeta
+	Spec PolicySpec
+}
 
-	TrafficMatcher TrafficMatcher
+type PolicySpec struct {
+	Compatibility  []networkingv1.PolicyType
+	Priority       int
+	TrafficMatcher *TrafficEdge
 	Directive      Directive
 }
 
@@ -20,9 +28,9 @@ type Policy struct {
 // - false, "" if no match
 // - true, Deny if matched and denies
 // - true, Allow if matched and allowed
-func (p *Policy) Allows(t *Traffic) (bool, Directive) {
-	if p.TrafficMatcher.Matches(t) {
-		return true, p.Directive
+func (ps *PolicySpec) Allows(tm *Traffic) (bool, Directive) {
+	if ps.TrafficMatcher.Matches(tm) {
+		return true, ps.Directive
 	}
 	return false, ""
 }

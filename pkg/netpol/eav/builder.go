@@ -24,162 +24,212 @@ func BuildTarget(netpol *networkingv1.NetworkPolicy) []*Policy {
 	for _, pType := range netpol.Spec.PolicyTypes {
 		switch pType {
 		case networkingv1.PolicyTypeIngress:
-			matcher, directive := BuildTrafficPeersFromIngress(netpol.Namespace, netpol.Spec.Ingress)
-			policies = append(policies, &Policy{
-				TrafficMatcher: matcher,
-				Directive:      directive,
-			})
+			edges, directive := BuildTrafficPeersFromIngress(netpol)
+			for _, edge := range edges {
+				policies = append(policies, &Policy{
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: PolicySpec{
+						Compatibility:  []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+						TrafficMatcher: edge,
+						Directive:      directive,
+						Priority:       0,
+					},
+				})
+			}
 		case networkingv1.PolicyTypeEgress:
-			matcher, directive := BuildTrafficPeersFromEgress(netpol.Namespace, netpol.Spec.Egress)
-			policies = append(policies, &Policy{
-				TrafficMatcher: matcher,
-				Directive:      directive,
-			})
+			edges, directive := BuildTrafficPeersFromEgress(netpol)
+			for _, edge := range edges {
+				policies = append(policies, &Policy{
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: PolicySpec{
+						Compatibility:  []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
+						TrafficMatcher: edge,
+						Directive:      directive,
+						Priority:       0,
+					},
+				})
+			}
 		}
 	}
 	return policies
 }
 
-func BuildTrafficPeersFromIngress(policyNamespace string, ingresses []networkingv1.NetworkPolicyIngressRule) (TrafficMatcher, Directive) {
-	if len(ingresses) == 0 {
-		return EverythingMatcher, DirectiveDeny
+func BuildTrafficPeersFromIngress(netpol *networkingv1.NetworkPolicy) ([]*TrafficEdge, Directive) {
+	if len(netpol.Spec.Ingress) == 0 {
+		return []*TrafficEdge{EverythingMatcher}, DirectiveDeny
 	}
 
-	family := &SelectorFamily{
-		IPSelector:              SourceIPSelector,
-		IsExternalSelector:      SourceIsExternalSelector,
-		NamespaceMatcher:        SourceNamespaceMatcher,
-		NamespaceLabelsSelector: SourceNamespaceLabelsSelector,
-		PodLabelsSelector:       SourcePodLabelsSelector,
+	var edges []*TrafficEdge
+	for _, ingress := range netpol.Spec.Ingress {
+		edges = append(edges, BuildSourceDestAndPorts(true, netpol.Spec.PodSelector, netpol.Namespace, ingress.Ports, ingress.From)...)
 	}
-
-	var sdaps []TrafficMatcher
-	for _, ingress := range ingresses {
-		sdaps = append(sdaps, BuildSourceDestAndPorts(family, policyNamespace, ingress.Ports, ingress.From))
-	}
-	return NewAny(sdaps...), DirectiveAllow
+	return edges, DirectiveAllow
 }
 
-var EgressSelector = &SelectorFamily{}
-
-func BuildTrafficPeersFromEgress(policyNamespace string, egresses []networkingv1.NetworkPolicyEgressRule) (TrafficMatcher, Directive) {
-	if len(egresses) == 0 {
+func BuildTrafficPeersFromEgress(netpol *networkingv1.NetworkPolicy) ([]*TrafficEdge, Directive) {
+	if len(netpol.Spec.Egress) == 0 {
 		// This is a hard-to-grok case:
 		//   in network policy land, it should select NO Peers, with the effect of blocking all communication to target
 		//   in matcher land, we translate that by matching ALL with a deny
-		return EverythingMatcher, DirectiveDeny
+		return []*TrafficEdge{EverythingMatcher}, DirectiveDeny
 	}
 
-	// TODO this gets the job done but is ugly -- could it be better?
-	family := &SelectorFamily{
-		IPSelector:              DestinationIPSelector,
-		IsExternalSelector:      DestinationIsExternalSelector,
-		NamespaceMatcher:        DestinationNamespaceMatcher,
-		NamespaceLabelsSelector: DestinationNamespaceLabelsSelector,
-		PodLabelsSelector:       DestinationPodLabelsSelector,
+	var edges []*TrafficEdge
+	for _, egress := range netpol.Spec.Egress {
+		edges = append(edges, BuildSourceDestAndPorts(false, netpol.Spec.PodSelector, netpol.Namespace, egress.Ports, egress.To)...)
 	}
-
-	var sdaps []TrafficMatcher
-	for _, egress := range egresses {
-		sdaps = append(sdaps, BuildSourceDestAndPorts(family, policyNamespace, egress.Ports, egress.To))
-	}
-	return NewAny(sdaps...), DirectiveAllow
+	return edges, DirectiveAllow
 }
 
-type SelectorFamily struct {
-	IPSelector              Selector
-	IsExternalSelector      Selector
-	NamespaceMatcher        func(string) *Equal
-	NamespaceLabelsSelector Selector
-	PodLabelsSelector       Selector
-}
-
-func BuildSourceDestAndPorts(family *SelectorFamily, policyNamespace string, npPorts []networkingv1.NetworkPolicyPort, peers []networkingv1.NetworkPolicyPeer) TrafficMatcher {
-	sds := BuildSourceDestsFromSlice(family, policyNamespace, peers)
-	if len(npPorts) == 0 {
-		return sds
+func BuildSourceDestAndPorts(isIngress bool, targetPodSelector metav1.LabelSelector, policyNamespace string, npPorts []networkingv1.NetworkPolicyPort, peers []networkingv1.NetworkPolicyPeer) []*TrafficEdge {
+	var ports []*PortMatcher
+	var protocols []*ProtocolMatcher
+	sds := BuildSourceDestsFromSlice(policyNamespace, peers)
+	if len(npPorts) > 0 {
+		ports, protocols = BuildPortsFromSlice(npPorts)
 	}
-	ports := BuildPortsFromSlice(npPorts)
-	return NewAll(sds, ports)
+
+	// handle a couple of corner cases
+	if len(ports) == 0 {
+		ports = []*PortMatcher{nil}
+	}
+	if len(protocols) == 0 {
+		protocols = []*ProtocolMatcher{nil}
+	}
+
+	var edges []*TrafficEdge
+	for _, peer := range sds {
+		for _, port := range ports {
+			for _, protocol := range protocols {
+				target := &PeerMatcher{
+					RelativeLocation: &PeerLocationInternal,
+					Internal: &InternalPeerMatcher{
+						Namespace: &StringMatcher{Value: policyNamespace},
+						PodLabels: &targetPodSelector,
+					},
+				}
+				var source, dest *PeerMatcher
+				if isIngress {
+					source = peer
+					dest = target
+				} else {
+					// egress
+					source = target
+					dest = peer
+				}
+				edges = append(edges, &TrafficEdge{
+					Type:     TrafficMatchTypeAll,
+					Source:   source,
+					Dest:     dest,
+					Port:     port,
+					Protocol: protocol,
+				})
+			}
+		}
+	}
+
+	return edges
 }
 
-func BuildPortsFromSlice(npPorts []networkingv1.NetworkPolicyPort) TrafficMatcher {
+func BuildPortsFromSlice(npPorts []networkingv1.NetworkPolicyPort) ([]*PortMatcher, []*ProtocolMatcher) {
 	if len(npPorts) == 0 {
 		panic("can't handle 0 NetworkPolicyPorts")
 	}
-	var terms []TrafficMatcher
+	var protocols []*ProtocolMatcher
+	var ports []*PortMatcher
 	for _, p := range npPorts {
-		terms = append(terms, BuildPort(p))
+		protocalMatcher, portMatcher := BuildPort(p)
+		if portMatcher != nil {
+			ports = append(ports, portMatcher)
+		}
+		protocols = append(protocols, protocalMatcher)
 	}
-	return NewAny(terms...)
+	return ports, protocols
 }
 
-func BuildSourceDestsFromSlice(family *SelectorFamily, policyNamespace string, peers []networkingv1.NetworkPolicyPeer) TrafficMatcher {
+func BuildSourceDestsFromSlice(policyNamespace string, peers []networkingv1.NetworkPolicyPeer) []*PeerMatcher {
+	var terms []*PeerMatcher
 	if len(peers) == 0 {
-		return EverythingMatcher
+		return append(terms, &PeerMatcher{})
 	}
-	var terms []TrafficMatcher
 	for _, from := range peers {
-		terms = append(terms, BuildSourceDest(family, policyNamespace, from))
+		terms = append(terms, BuildSourceDest(policyNamespace, from))
 	}
-	return NewAny(terms...)
+	return terms
 }
 
 func isLabelSelectorEmpty(l metav1.LabelSelector) bool {
 	return len(l.MatchLabels) == 0 && len(l.MatchExpressions) == 0
 }
 
-func BuildSourceDest(family *SelectorFamily, policyNamespace string, peer networkingv1.NetworkPolicyPeer) TrafficMatcher {
+func BuildSourceDest(policyNamespace string, peer networkingv1.NetworkPolicyPeer) *PeerMatcher {
 	if peer.IPBlock != nil {
-		return IPBlockMatcher(family.IPSelector, peer.IPBlock.CIDR, peer.IPBlock.Except)
+		return &PeerMatcher{IP: &IPMatcher{Block: peer.IPBlock}}
 	}
 	podSel := peer.PodSelector
 	nsSel := peer.NamespaceSelector
-	isInternalMatcher := &Not{&Bool{family.IsExternalSelector}}
 	if podSel == nil || isLabelSelectorEmpty(*podSel) {
 		if nsSel == nil {
-			return NewAll(
-				isInternalMatcher,
-				family.NamespaceMatcher(policyNamespace))
+			return &PeerMatcher{
+				RelativeLocation: &PeerLocationInternal,
+				Internal: &InternalPeerMatcher{
+					Namespace: &StringMatcher{Value: policyNamespace},
+				},
+			}
 		} else if isLabelSelectorEmpty(*nsSel) {
-			return isInternalMatcher
+			return &PeerMatcher{
+				RelativeLocation: &PeerLocationInternal,
+			}
 		} else {
 			// nsSel has some stuff
-			return NewAll(
-				isInternalMatcher,
-				KubeMatchLabelSelector(family.NamespaceLabelsSelector, *nsSel))
+			return &PeerMatcher{
+				RelativeLocation: &PeerLocationInternal,
+				Internal: &InternalPeerMatcher{
+					NamespaceLabels: nsSel,
+				},
+			}
 		}
 	} else {
-		podLabelsMatcher := KubeMatchLabelSelector(family.PodLabelsSelector, *podSel)
 		// podSel has some stuff
 		if nsSel == nil {
-			return NewAll(
-				isInternalMatcher,
-				family.NamespaceMatcher(policyNamespace),
-				podLabelsMatcher)
+			return &PeerMatcher{
+				RelativeLocation: &PeerLocationInternal,
+				Internal: &InternalPeerMatcher{
+					Namespace: &StringMatcher{Value: policyNamespace},
+					PodLabels: podSel,
+				},
+			}
 		} else if isLabelSelectorEmpty(*nsSel) {
-			return NewAll(
-				isInternalMatcher,
-				KubeMatchLabelSelector(family.PodLabelsSelector, *podSel))
+			return &PeerMatcher{
+				RelativeLocation: &PeerLocationInternal,
+				Internal: &InternalPeerMatcher{
+					PodLabels: podSel,
+				},
+			}
 		} else {
 			// nsSel has some stuff
-			return NewAll(
-				isInternalMatcher,
-				KubeMatchLabelSelector(family.PodLabelsSelector, *podSel),
-				KubeMatchLabelSelector(family.NamespaceLabelsSelector, *nsSel))
+			return &PeerMatcher{
+				RelativeLocation: &PeerLocationInternal,
+				Internal: &InternalPeerMatcher{
+					NamespaceLabels: nsSel,
+					PodLabels:       podSel,
+				},
+			}
 		}
 	}
 }
 
-func BuildPort(p networkingv1.NetworkPolicyPort) TrafficMatcher {
+func BuildPort(p networkingv1.NetworkPolicyPort) (*ProtocolMatcher, *PortMatcher) {
+	var protocolMatcher *ProtocolMatcher
+	var portMatcher *PortMatcher
 	protocol := v1.ProtocolTCP
 	if p.Protocol != nil {
 		protocol = *p.Protocol
 	}
+	protocolMatcher = &ProtocolMatcher{Values: []v1.Protocol{protocol}}
 	if p.Port == nil {
-		return ProtocolMatcher(protocol)
+		return protocolMatcher, nil
 	}
-	var portMatcher TrafficMatcher
 	switch p.Port.Type {
 	case intstr.Int:
 		portMatcher = NumberedPortMatcher(int(p.Port.IntVal))
@@ -188,5 +238,5 @@ func BuildPort(p networkingv1.NetworkPolicyPort) TrafficMatcher {
 	default:
 		panic("invalid intstr type")
 	}
-	return NewAll(ProtocolMatcher(protocol), portMatcher)
+	return protocolMatcher, portMatcher
 }

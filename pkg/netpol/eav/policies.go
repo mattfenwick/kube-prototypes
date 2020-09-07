@@ -11,7 +11,7 @@ type Policies struct {
 func (ps *Policies) Allows(t *Traffic) bool {
 	isDenied := false
 	for _, policy := range ps.Policies {
-		isMatch, directive := policy.Allows(t)
+		isMatch, directive := policy.Spec.Allows(t)
 		if isMatch {
 			if directive == DirectiveAllow {
 				return true

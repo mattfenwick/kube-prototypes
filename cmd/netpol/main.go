@@ -5,15 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol"
+	"github.com/mattfenwick/kube-prototypes/pkg/netpol/eav"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/examples"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/kube"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/matcher"
+	"github.com/mattfenwick/kube-prototypes/pkg/netpol/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"gopkg.in/yaml.v2"
 
 	//v1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,9 +28,9 @@ func SetUpLogger(logLevelStr string) error {
 		return errors.Wrapf(err, "unable to parse the specified log level: '%s'", logLevel)
 	}
 	log.SetLevel(logLevel)
-	log.SetFormatter(&log.TextFormatter{
-		FullTimestamp: true,
-	})
+	//log.SetFormatter(&log.TextFormatter{
+	//	FullTimestamp: true,
+	//})
 	log.Infof("log level set to '%s'", log.GetLevel())
 	return nil
 }
@@ -51,6 +54,44 @@ func setupCommand() *cobra.Command {
 
 	command.AddCommand(SetupNetpolCommand())
 	command.AddCommand(SetupProbeCommand())
+	command.AddCommand(SetupCreateNetpolCommand())
+
+	return command
+}
+
+func SetupCreateNetpolCommand() *cobra.Command {
+	command := &cobra.Command{
+		Use:   "create",
+		Short: "create some netpols",
+		Long:  "create some netpols",
+		Args:  cobra.ExactArgs(0),
+		Run: func(cmd *cobra.Command, args []string) {
+			// this -> kube
+			np := eav.DenyAll
+			kubeNetPols := eav.Reduce(np)
+			bytes, err := json.MarshalIndent(kubeNetPols, "", "  ")
+			utils.DoOrDie(err)
+			fmt.Printf("%s\n\n", bytes)
+
+			yamlBytes, err := yaml.Marshal(kubeNetPols)
+			utils.DoOrDie(err)
+			fmt.Printf("%s\n\n", yamlBytes)
+
+			// kube -> this
+			netpol := examples.AllowFromNamespaceTo(
+				"abcd",
+				map[string]string{"purpose": "production"},
+				map[string]string{"app": "web"})
+			policies := eav.BuildTarget(netpol)
+			bytes, err = json.MarshalIndent(policies, "", "  ")
+			utils.DoOrDie(err)
+			fmt.Printf("%s\n\n", bytes)
+
+			yamlBytes, err = yaml.Marshal(policies)
+			utils.DoOrDie(err)
+			fmt.Printf("%s\n\n", yamlBytes)
+		},
+	}
 
 	return command
 }
@@ -69,25 +110,33 @@ func SetupNetpolCommand() *cobra.Command {
 	return command
 }
 
+type ProbeArgs struct {
+	Namespaces     []string
+	ProbePods      bool
+	ProbeServices  bool
+	TimeoutSeconds int
+}
+
 func SetupProbeCommand() *cobra.Command {
-	var namespaces []string
-	var probeContainers, probeServices bool
+	args := &ProbeArgs{}
 
 	command := &cobra.Command{
 		Use:   "probe",
 		Short: "probe connectivity",
 		Long:  "probe pod -> pod and pod -> service connectivity",
 		Args:  cobra.ExactArgs(0),
-		Run: func(cmd *cobra.Command, args []string) {
-			runProbe(namespaces, probeContainers, probeServices)
+		Run: func(cmd *cobra.Command, as []string) {
+			runProbe(args)
 		},
 	}
 
-	command.Flags().StringSliceVar(&namespaces, "nss", []string{}, "namespaces to probe")
+	command.Flags().StringSliceVar(&args.Namespaces, "nss", []string{}, "namespaces to probe")
 	command.MarkFlagRequired("nss")
 
-	command.Flags().BoolVar(&probeContainers, "cont", true, "probe containers")
-	command.Flags().BoolVar(&probeServices, "svc", false, "probe services")
+	command.Flags().BoolVar(&args.ProbePods, "pod", true, "probe pods")
+	command.Flags().BoolVar(&args.ProbeServices, "svc", false, "probe services")
+
+	command.Flags().IntVar(&args.TimeoutSeconds, "timeout", 2, "timeout in seconds")
 
 	return command
 }
@@ -95,7 +144,7 @@ func SetupProbeCommand() *cobra.Command {
 func main() {
 	command := setupCommand()
 	err := errors.Wrapf(command.Execute(), "run root command")
-	doOrDie(err)
+	utils.DoOrDie(err)
 
 	// 1. probe all pods in a namespace
 	//  - on a few different ports ?  or on the port opened for the services?  <- get the right ports
@@ -105,24 +154,18 @@ func main() {
 	// 4. figure out some visualization of connectivity
 }
 
-func doOrDie(err error) {
-	if err != nil {
-		log.Fatalf("%+v", err)
-	}
-}
-
 func mungeNetworkPolicies() {
 	k8s, err := kube.NewKubernetes()
-	doOrDie(err)
+	utils.DoOrDie(err)
 
 	err = k8s.CleanNetworkPolicies("default")
-	doOrDie(err)
+	utils.DoOrDie(err)
 
 	var allCreated []*networkingv1.NetworkPolicy
 	for _, np := range examples.AllExamples {
 		createdNp, err := k8s.CreateNetworkPolicy(np)
 		allCreated = append(allCreated, createdNp)
-		doOrDie(err)
+		utils.DoOrDie(err)
 		//explanation := netpol.ExplainPolicy(np)
 		explanation := netpol.ExplainPolicy(createdNp)
 		fmt.Printf("policy explanation for %s:\n%s\n\n", np.Name, explanation.PrettyPrint())
@@ -135,12 +178,12 @@ func mungeNetworkPolicies() {
 		fmt.Println()
 
 		createdNpBytes, err := json.MarshalIndent(createdNp, "", "  ")
-		doOrDie(err)
+		utils.DoOrDie(err)
 		fmt.Printf("created netpol:\n\n%s\n\n", createdNpBytes)
 
 		matcherPolicy := matcher.BuildNetworkPolicy(createdNp)
 		matcherPolicyBytes, err := json.MarshalIndent(matcherPolicy, "", "  ")
-		doOrDie(err)
+		utils.DoOrDie(err)
 		fmt.Printf("created matcher netpol:\n\n%s\n\n", matcherPolicyBytes)
 		isAllowed, allowers, matchingTargets := matcherPolicy.IsTrafficAllowed(&matcher.ResolvedTraffic{
 			Traffic: matcher.NewPodTraffic(
@@ -168,7 +211,7 @@ func mungeNetworkPolicies() {
 
 	netpols := matcher.BuildNetworkPolicies(allCreated)
 	bytes, err := json.MarshalIndent(netpols, "", "  ")
-	doOrDie(err)
+	utils.DoOrDie(err)
 	fmt.Printf("full network policies:\n\n%s\n\n", bytes)
 	fmt.Printf("\nexplained:\n%s\n", matcher.Explain(netpols))
 
@@ -176,16 +219,20 @@ func mungeNetworkPolicies() {
 	fmt.Printf("complicated example explained:\n%s\n", matcher.Explain(netpolsExamples))
 }
 
-func runProbe(namespaces []string, probeContainers bool, probeServices bool) {
+func runProbe(args *ProbeArgs) {
 	k8s, err := kube.NewKubernetes()
-	doOrDie(err)
+	utils.DoOrDie(err)
 
-	if probeContainers {
-		probeContainerToContainer(namespaces, k8s)
+	//if args.ProbeContainers {
+	//	probeContainerToContainer(args.Namespaces, k8s, args.TimeoutSeconds)
+	//}
+
+	if args.ProbePods {
+		probePodToPod(args.Namespaces, k8s, args.TimeoutSeconds)
 	}
 
-	if probeServices {
-		probeContainerToService(namespaces, k8s)
+	if args.ProbeServices {
+		probeContainerToService(args.Namespaces, k8s, args.TimeoutSeconds)
 	}
 }
 
@@ -221,9 +268,59 @@ func getServices(k8s *kube.Kubernetes, namespaces []string) ([]v1.Service, error
 	return services, nil
 }
 
-func probeContainerToContainer(namespaces []string, k8s *kube.Kubernetes) {
+func probePodToPod(namespaces []string, k8s *kube.Kubernetes, timeoutSeconds int) {
 	pods, err := getPods(k8s, namespaces)
-	doOrDie(err)
+	utils.DoOrDie(err)
+
+	var items []string
+	for _, p := range pods {
+		items = append(items, podKey(p))
+	}
+
+	table := netpol.NewStringTruthTable(items)
+	for _, fromPod := range pods {
+		if len(fromPod.Spec.Containers) != 1 || len(fromPod.Status.ContainerStatuses) != 1 {
+			panic(errors.Errorf("expected 1 container spec and 1 container status, found %+v", fromPod))
+		}
+		fromContainer := fromPod.Spec.Containers[0].Name
+		for _, toPod := range pods {
+			if len(toPod.Spec.Containers) != 1 || len(toPod.Status.ContainerStatuses) != 1 {
+				panic(errors.Errorf("expected 1 container spec and 1 container status, found %+v", toPod))
+			}
+			toCont := toPod.Spec.Containers[0]
+			log.Infof("Probing %s -> %s", podKey(fromPod), podKey(toPod))
+			//connected, err := k8s.ProbeWithPod(fromPod, toPod, port)
+			if len(toCont.Ports) == 0 {
+				table.Set(podKey(fromPod), podKey(toPod), "no ports")
+				continue
+			}
+			connected, curlExitCode, err := k8s.ProbeFromContainerToPod(&kube.ProbeFromContainerToPod{
+				FromNamespace:      fromPod.Namespace,
+				FromPod:            fromPod.Name,
+				FromContainer:      fromContainer,
+				ToIP:               toPod.Status.PodIP,
+				ToPort:             int(toCont.Ports[0].ContainerPort),
+				ToNamespace:        toPod.Namespace,
+				ToPod:              toPod.Name,
+				CurlTimeoutSeconds: timeoutSeconds,
+			})
+			log.Warningf("curl exit code: %d", curlExitCode)
+			if err != nil {
+				log.Errorf("unable to make main observation on %s -> %s: %+v", fromPod.Name, toPod.Name, err)
+			}
+			if !connected {
+				log.Warnf("FAILED CONNECTION FOR WHITELISTED PODS %s -> %s !!!! ", fromPod.Name, toPod.Name)
+			}
+			table.Set(podKey(fromPod), podKey(toPod), fmt.Sprintf("%d", curlExitCode))
+		}
+	}
+
+	table.Table().Render()
+}
+
+func probeContainerToContainer(namespaces []string, k8s *kube.Kubernetes, timeoutSeconds int) {
+	pods, err := getPods(k8s, namespaces)
+	utils.DoOrDie(err)
 
 	var items []string
 	for _, p := range pods {
@@ -250,7 +347,7 @@ func probeContainerToContainer(namespaces []string, k8s *kube.Kubernetes) {
 						ToPort:             int(toCont.Ports[0].ContainerPort),
 						ToNamespace:        toPod.Namespace,
 						ToPod:              toPod.Name,
-						CurlTimeoutSeconds: 5,
+						CurlTimeoutSeconds: timeoutSeconds,
 					})
 					log.Warningf("curl exit code: %d", curlExitCode)
 					if err != nil {
@@ -268,12 +365,13 @@ func probeContainerToContainer(namespaces []string, k8s *kube.Kubernetes) {
 	table.Table().Render()
 }
 
-func probeContainerToService(namespaces []string, k8s *kube.Kubernetes) {
+func probeContainerToService(namespaces []string, k8s *kube.Kubernetes, timeoutSeconds int) {
+	log.Fatalf("TODO services are broken -- need to use fully qualified namespace+service")
 	pods, err := getPods(k8s, namespaces)
-	doOrDie(err)
+	utils.DoOrDie(err)
 
 	services, err := getServices(k8s, namespaces)
-	doOrDie(err)
+	utils.DoOrDie(err)
 
 	var froms []string
 	for _, p := range pods {
@@ -299,7 +397,7 @@ func probeContainerToService(namespaces []string, k8s *kube.Kubernetes) {
 					ToPort:             int(toService.Spec.Ports[0].Port),
 					ToNamespace:        toService.Namespace,
 					ToPod:              "(actually a service)",
-					CurlTimeoutSeconds: 5,
+					CurlTimeoutSeconds: timeoutSeconds,
 				})
 				log.Warningf("curl exit code: %d", curlExitCode)
 				if err != nil {

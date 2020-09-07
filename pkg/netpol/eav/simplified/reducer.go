@@ -62,15 +62,3 @@ func Reduce(np *Policy) []*networkingv1.NetworkPolicy {
 	//}
 	return []*networkingv1.NetworkPolicy{}
 }
-
-func Flatten(matcher TrafficMatcher) {
-	switch t := matcher.(type) {
-	case *Equal:
-		var s, d []*
-	case *All:
-	case *Any:
-	case *Not:
-	case *Bool:
-	case *InArray:
-	}
-}

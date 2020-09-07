@@ -24,22 +24,24 @@ func BuildTarget(netpol *networkingv1.NetworkPolicy) []*Policy {
 	for _, pType := range netpol.Spec.PolicyTypes {
 		switch pType {
 		case networkingv1.PolicyTypeIngress:
-			matcher, directive := BuildTrafficPeersFromIngress(netpol.Namespace, netpol.Spec.Ingress)
+			targetMatcher := KubeMatchLabelSelector(NewKeyPathSelector(DestSelector, InternalSelector, PodLabelsSelector), netpol.Spec.PodSelector)
+			peerMatcher, directive := BuildTrafficPeersFromIngress(netpol.Namespace, netpol.Spec.Ingress)
 			policies = append(policies, &Policy{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: PolicySpec{
 					Compatibility:  []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
-					TrafficMatcher: matcher,
+					TrafficMatcher: NewAll(targetMatcher, peerMatcher),
 					Directive:      directive,
 				},
 			})
 		case networkingv1.PolicyTypeEgress:
-			matcher, directive := BuildTrafficPeersFromEgress(netpol.Namespace, netpol.Spec.Egress)
+			targetMatcher := KubeMatchLabelSelector(NewKeyPathSelector(SourceSelector, InternalSelector, PodLabelsSelector), netpol.Spec.PodSelector)
+			peerMatcher, directive := BuildTrafficPeersFromEgress(netpol.Namespace, netpol.Spec.Egress)
 			policies = append(policies, &Policy{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: PolicySpec{
 					Compatibility:  []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
-					TrafficMatcher: matcher,
+					TrafficMatcher: NewAll(targetMatcher, peerMatcher),
 					Directive:      directive,
 				},
 			})
