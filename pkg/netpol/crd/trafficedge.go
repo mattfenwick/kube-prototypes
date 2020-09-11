@@ -1,4 +1,4 @@
-package eav
+package crd
 
 import (
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/kube"

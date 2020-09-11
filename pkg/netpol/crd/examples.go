@@ -1,6 +1,7 @@
-package eav
+package crd
 
 import (
+	"fmt"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -385,3 +386,24 @@ spec:
                 value: nil
   directive: allow
 */
+
+func DenyEgressFromNamespace(ns string) *Policy {
+	return &Policy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("deny-egress-from-ns-%s", ns),
+		},
+		Spec: PolicySpec{
+			Compatibility: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
+			Priority:      10,
+			TrafficMatcher: &TrafficEdge{
+				Type: TrafficMatchTypeAll,
+				Source: &PeerMatcher{
+					Internal: &InternalPeerMatcher{
+						Namespace: &StringMatcher{Value: ns},
+					},
+				},
+			},
+			Directive: DirectiveDeny,
+		},
+	}
+}

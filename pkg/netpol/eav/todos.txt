@@ -1,8 +1,0 @@
-TODOs:
-
- - get more people involved
- - create a readme
-   - link to https://jayunit100.blogspot.com/2020/08/daydreaming-about-perfect-networkpolicy.html for motivation
- - create some issues for other people to work on
-   - how can we decompose it?
-   - what components could be split off for other people to own?

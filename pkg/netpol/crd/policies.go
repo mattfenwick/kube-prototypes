@@ -1,4 +1,4 @@
-package eav
+package crd
 
 type Policies struct {
 	Policies []*Policy

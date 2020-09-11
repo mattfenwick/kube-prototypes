@@ -1,4 +1,4 @@
-package eav
+package crd
 
 import (
 	"fmt"
@@ -81,8 +81,12 @@ func Reduce(np *Policy) []*networkingv1.NetworkPolicy {
 			edge := np.Spec.TrafficMatcher
 			podSelector := metav1.LabelSelector{}
 			if edge.Source != nil {
-				namespace = edge.Source.Internal.Namespace.Value
-				podSelector = *edge.Source.Internal.PodLabels
+				if edge.Source.Internal.Namespace != nil {
+					namespace = edge.Source.Internal.Namespace.Value
+				}
+				if edge.Source.Internal.PodLabels != nil {
+					podSelector = *edge.Source.Internal.PodLabels
+				}
 			}
 			pols = append(pols, &networkingv1.NetworkPolicy{
 				ObjectMeta: metav1.ObjectMeta{
@@ -132,7 +136,7 @@ func ReducePortProtocol(portMatcher *PortMatcher, protocolMatcher *ProtocolMatch
 		}
 	}
 	if len(protocols) == 0 {
-		protocols = []v1.Protocol{v1.ProtocolTCP, v1.ProtocolUDP, v1.ProtocolSCTP}
+		protocols = []v1.Protocol{v1.ProtocolTCP, v1.ProtocolUDP} // TODO I guess SCTP can't be used?, v1.ProtocolSCTP}
 	}
 	var npPorts []networkingv1.NetworkPolicyPort
 	if portMatcher == nil {
@@ -171,7 +175,7 @@ func ReducePeerMatcher(peer *PeerMatcher) []networkingv1.NetworkPolicyPeer {
 	// TODO check any/all of policy spec?
 	if peer == nil {
 		// TODO what should this return?  for now we'll just match everything
-		return []networkingv1.NetworkPolicyPeer{{}}
+		return []networkingv1.NetworkPolicyPeer{}
 	}
 	if peer.IP != nil {
 		if peer.IP.Value != nil {

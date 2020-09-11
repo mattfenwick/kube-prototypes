@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol"
-	"github.com/mattfenwick/kube-prototypes/pkg/netpol/eav"
+	"github.com/mattfenwick/kube-prototypes/pkg/netpol/crd"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/examples"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/kube"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/matcher"
@@ -13,12 +13,11 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"gopkg.in/yaml.v2"
 
-	//v1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -67,8 +66,8 @@ func SetupCreateNetpolCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			// this -> kube
-			np := eav.DenyAll
-			kubeNetPols := eav.Reduce(np)
+			np := crd.DenyAll
+			kubeNetPols := crd.Reduce(np)
 			bytes, err := json.MarshalIndent(kubeNetPols, "", "  ")
 			utils.DoOrDie(err)
 			fmt.Printf("%s\n\n", bytes)
@@ -82,7 +81,7 @@ func SetupCreateNetpolCommand() *cobra.Command {
 				"abcd",
 				map[string]string{"purpose": "production"},
 				map[string]string{"app": "web"})
-			policies := eav.BuildTarget(netpol)
+			policies := crd.BuildTarget(netpol)
 			bytes, err = json.MarshalIndent(policies, "", "  ")
 			utils.DoOrDie(err)
 			fmt.Printf("%s\n\n", bytes)
@@ -236,24 +235,8 @@ func runProbe(args *ProbeArgs) {
 	}
 }
 
-func podKey(pod v1.Pod) string {
-	return fmt.Sprintf("%s/%s", pod.Namespace, pod.Name)
-}
-
 func serviceKey(svc v1.Service) string {
 	return fmt.Sprintf("%s/%s", svc.Namespace, svc.Name)
-}
-
-func getPods(k8s *kube.Kubernetes, namespaces []string) ([]v1.Pod, error) {
-	var pods []v1.Pod
-	for _, ns := range namespaces {
-		podList, err := k8s.ClientSet.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-		if err != nil {
-			return nil, errors.Wrapf(err, "unable to get pods in namespace %s", ns)
-		}
-		pods = append(pods, podList.Items...)
-	}
-	return pods, nil
 }
 
 func getServices(k8s *kube.Kubernetes, namespaces []string) ([]v1.Service, error) {
@@ -269,62 +252,19 @@ func getServices(k8s *kube.Kubernetes, namespaces []string) ([]v1.Service, error
 }
 
 func probePodToPod(namespaces []string, k8s *kube.Kubernetes, timeoutSeconds int) {
-	pods, err := getPods(k8s, namespaces)
+	table, err := k8s.ProbePodToPod(namespaces, timeoutSeconds)
 	utils.DoOrDie(err)
-
-	var items []string
-	for _, p := range pods {
-		items = append(items, podKey(p))
-	}
-
-	table := netpol.NewStringTruthTable(items)
-	for _, fromPod := range pods {
-		if len(fromPod.Spec.Containers) != 1 || len(fromPod.Status.ContainerStatuses) != 1 {
-			panic(errors.Errorf("expected 1 container spec and 1 container status, found %+v", fromPod))
-		}
-		fromContainer := fromPod.Spec.Containers[0].Name
-		for _, toPod := range pods {
-			if len(toPod.Spec.Containers) != 1 || len(toPod.Status.ContainerStatuses) != 1 {
-				panic(errors.Errorf("expected 1 container spec and 1 container status, found %+v", toPod))
-			}
-			toCont := toPod.Spec.Containers[0]
-			log.Infof("Probing %s -> %s", podKey(fromPod), podKey(toPod))
-			//connected, err := k8s.ProbeWithPod(fromPod, toPod, port)
-			if len(toCont.Ports) == 0 {
-				table.Set(podKey(fromPod), podKey(toPod), "no ports")
-				continue
-			}
-			connected, curlExitCode, err := k8s.ProbeFromContainerToPod(&kube.ProbeFromContainerToPod{
-				FromNamespace:      fromPod.Namespace,
-				FromPod:            fromPod.Name,
-				FromContainer:      fromContainer,
-				ToIP:               toPod.Status.PodIP,
-				ToPort:             int(toCont.Ports[0].ContainerPort),
-				ToNamespace:        toPod.Namespace,
-				ToPod:              toPod.Name,
-				CurlTimeoutSeconds: timeoutSeconds,
-			})
-			log.Warningf("curl exit code: %d", curlExitCode)
-			if err != nil {
-				log.Errorf("unable to make main observation on %s -> %s: %+v", fromPod.Name, toPod.Name, err)
-			}
-			if !connected {
-				log.Warnf("FAILED CONNECTION FOR WHITELISTED PODS %s -> %s !!!! ", fromPod.Name, toPod.Name)
-			}
-			table.Set(podKey(fromPod), podKey(toPod), fmt.Sprintf("%d", curlExitCode))
-		}
-	}
 
 	table.Table().Render()
 }
 
 func probeContainerToContainer(namespaces []string, k8s *kube.Kubernetes, timeoutSeconds int) {
-	pods, err := getPods(k8s, namespaces)
+	pods, err := kube.GetPods(k8s, namespaces)
 	utils.DoOrDie(err)
 
 	var items []string
 	for _, p := range pods {
-		items = append(items, podKey(p))
+		items = append(items, kube.PodKey(p))
 	}
 
 	table := netpol.NewStringTruthTable(items)
@@ -333,10 +273,10 @@ func probeContainerToContainer(namespaces []string, k8s *kube.Kubernetes, timeou
 			fromContainer := fromCont.Name
 			for _, toPod := range pods {
 				for _, toCont := range toPod.Spec.Containers {
-					log.Infof("Probing %s -> %s", podKey(fromPod), podKey(toPod))
+					log.Infof("Probing %s -> %s", kube.PodKey(fromPod), kube.PodKey(toPod))
 					//connected, err := k8s.ProbeWithPod(fromPod, toPod, port)
 					if len(toCont.Ports) == 0 {
-						table.Set(podKey(fromPod), podKey(toPod), "no ports")
+						table.Set(kube.PodKey(fromPod), kube.PodKey(toPod), "no ports")
 						continue
 					}
 					connected, curlExitCode, err := k8s.ProbeFromContainerToPod(&kube.ProbeFromContainerToPod{
@@ -356,7 +296,7 @@ func probeContainerToContainer(namespaces []string, k8s *kube.Kubernetes, timeou
 					if !connected {
 						log.Warnf("FAILED CONNECTION FOR WHITELISTED PODS %s -> %s !!!! ", fromPod.Name, toPod.Name)
 					}
-					table.Set(podKey(fromPod), podKey(toPod), fmt.Sprintf("%d", curlExitCode))
+					table.Set(kube.PodKey(fromPod), kube.PodKey(toPod), fmt.Sprintf("%d", curlExitCode))
 				}
 			}
 		}
@@ -367,7 +307,7 @@ func probeContainerToContainer(namespaces []string, k8s *kube.Kubernetes, timeou
 
 func probeContainerToService(namespaces []string, k8s *kube.Kubernetes, timeoutSeconds int) {
 	log.Fatalf("TODO services are broken -- need to use fully qualified namespace+service")
-	pods, err := getPods(k8s, namespaces)
+	pods, err := kube.GetPods(k8s, namespaces)
 	utils.DoOrDie(err)
 
 	services, err := getServices(k8s, namespaces)
@@ -375,7 +315,7 @@ func probeContainerToService(namespaces []string, k8s *kube.Kubernetes, timeoutS
 
 	var froms []string
 	for _, p := range pods {
-		froms = append(froms, podKey(p))
+		froms = append(froms, kube.PodKey(p))
 	}
 	var tos []string
 	for _, s := range services {
@@ -387,7 +327,7 @@ func probeContainerToService(namespaces []string, k8s *kube.Kubernetes, timeoutS
 		for _, fromCont := range fromPod.Spec.Containers {
 			fromContainer := fromCont.Name
 			for _, toService := range services {
-				log.Infof("Probing %s -> %s", podKey(fromPod), serviceKey(toService))
+				log.Infof("Probing %s -> %s", kube.PodKey(fromPod), serviceKey(toService))
 				//connected, err := k8s.ProbeWithPod(fromPod, toPod, port)
 				connected, curlExitCode, err := k8s.ProbeFromContainerToPod(&kube.ProbeFromContainerToPod{
 					FromNamespace:      fromPod.Namespace,
@@ -406,7 +346,7 @@ func probeContainerToService(namespaces []string, k8s *kube.Kubernetes, timeoutS
 				if !connected {
 					log.Warnf("FAILED CONNECTION FOR WHITELISTED PODS %s -> %s !!!! ", fromPod.Name, toService.Name)
 				}
-				table.Set(podKey(fromPod), serviceKey(toService), fmt.Sprintf("%d", curlExitCode))
+				table.Set(kube.PodKey(fromPod), serviceKey(toService), fmt.Sprintf("%d", curlExitCode))
 			}
 		}
 	}
