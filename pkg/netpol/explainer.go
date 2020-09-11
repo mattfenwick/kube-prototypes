@@ -2,7 +2,7 @@ package netpol
 
 import (
 	"fmt"
-	"github.com/mattfenwick/kube-prototypes/pkg/netpol/examples"
+	"github.com/mattfenwick/kube-prototypes/pkg/netpol/kube/examples"
 	log "github.com/sirupsen/logrus"
 	networkingv1 "k8s.io/api/networking/v1"
 	"strings"

@@ -2,6 +2,7 @@ package crd
 
 import (
 	"fmt"
+	"github.com/mattfenwick/kube-prototypes/pkg/netpol/kube/examples"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -404,6 +405,27 @@ func DenyEgressFromNamespace(ns string) *Policy {
 				},
 			},
 			Directive: DirectiveDeny,
+		},
+	}
+}
+
+func AllowIngressToNamespace(nsLabels map[string]string) *Policy {
+	return &Policy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("allow-ingress-from-ns-%s", examples.LabelString(nsLabels)),
+		},
+		Spec: PolicySpec{
+			Compatibility: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+			Priority:      10,
+			TrafficMatcher: &TrafficEdge{
+				Type: TrafficMatchTypeAll,
+				Dest: &PeerMatcher{
+					Internal: &InternalPeerMatcher{
+						NamespaceLabels: &metav1.LabelSelector{MatchLabels: nsLabels},
+					},
+				},
+			},
+			Directive: DirectiveAllow,
 		},
 	}
 }

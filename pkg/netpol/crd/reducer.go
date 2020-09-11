@@ -11,38 +11,6 @@ import (
 // TODO wow, this is really hard due to the target-biased nature of network
 //   policies
 
-func AllowAllIngressNetworkingPolicy(namespace string) *networkingv1.NetworkPolicy {
-	return &networkingv1.NetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-all-to-%s", namespace),
-			Namespace: namespace,
-		},
-		Spec: networkingv1.NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{},
-			Ingress: []networkingv1.NetworkPolicyIngressRule{
-				{},
-			},
-			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
-		},
-	}
-}
-
-func AllowAllEgressNetworkingPolicy(namespace string) *networkingv1.NetworkPolicy {
-	return &networkingv1.NetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "allow-all",
-			Namespace: namespace,
-		},
-		Spec: networkingv1.NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{},
-			Egress: []networkingv1.NetworkPolicyEgressRule{
-				{},
-			},
-			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
-		},
-	}
-}
-
 func ReduceAll(np []*Policy) []*networkingv1.NetworkPolicy {
 	var netpols []*networkingv1.NetworkPolicy
 	for _, n := range np {
@@ -61,8 +29,12 @@ func Reduce(np *Policy) []*networkingv1.NetworkPolicy {
 			edge := np.Spec.TrafficMatcher
 			podSelector := metav1.LabelSelector{}
 			if edge.Dest != nil {
-				namespace = edge.Dest.Internal.Namespace.Value
-				podSelector = *edge.Dest.Internal.PodLabels
+				if edge.Dest.Internal.Namespace != nil {
+					namespace = edge.Dest.Internal.Namespace.Value
+				}
+				if edge.Dest.Internal.PodLabels != nil {
+					podSelector = *edge.Dest.Internal.PodLabels
+				}
 			}
 			pols = append(pols, &networkingv1.NetworkPolicy{
 				ObjectMeta: metav1.ObjectMeta{

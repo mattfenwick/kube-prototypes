@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/crd"
-	"github.com/mattfenwick/kube-prototypes/pkg/netpol/examples"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/kube"
+	"github.com/mattfenwick/kube-prototypes/pkg/netpol/kube/examples"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/utils"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -15,42 +15,15 @@ import (
 	"time"
 )
 
-
-func AllowNothingFrom(namespace string, selector metav1.LabelSelector) *networkingv1.NetworkPolicy {
-	return &networkingv1.NetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-nothing-from-%s", namespace),
-			Namespace: namespace,
-		},
-		Spec: networkingv1.NetworkPolicySpec{
-			PodSelector: selector,
-			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
-		},
+func convertNewToKubePols(policies ...*crd.Policy) []*networkingv1.NetworkPolicy {
+	var kubePols []*networkingv1.NetworkPolicy
+	for _, pol := range policies {
+		netpols := crd.Reduce(pol)
+		for _, netpol := range netpols {
+			kubePols = append(kubePols, netpol)
+		}
 	}
-}
-
-func AllowFromTo(namespace string, selector metav1.LabelSelector, nsLabels map[string]string) *networkingv1.NetworkPolicy {
-	return &networkingv1.NetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("allow-from-%s-to-%s", namespace, examples.LabelString(nsLabels)),
-			Namespace: namespace,
-		},
-		Spec: networkingv1.NetworkPolicySpec{
-			PodSelector: selector,
-			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
-			Egress: []networkingv1.NetworkPolicyEgressRule{
-				{
-					To: []networkingv1.NetworkPolicyPeer{
-						{
-							NamespaceSelector: &metav1.LabelSelector{
-								MatchLabels:      nsLabels,
-							},
-						},
-					},
-				},
-			},
-		},
-	}
+	return kubePols
 }
 
 func main() {
@@ -104,54 +77,53 @@ func main() {
 	initialResults.Table().Render()
 
 	// 5. install a few netpols
-	pols := []*crd.Policy{
-		// TODO these policies don't work right, kube corner cases are hard to work with
-		//   to deny, they should: select stuff in the target, and select *nothing* in
-		//   the peers
-		//crd.DenyEgressFromNamespace("d1"),
-		//crd.DenyAll,
+	polGroups := [][]*networkingv1.NetworkPolicy {
+		convertNewToKubePols( // TODO these policies don't work right, kube corner cases are hard to work with
+			//   to deny, they should: select stuff in the target, and select *nothing* in
+			//   the peers
+			crd.DenyEgressFromNamespace("d1"),
+			crd.AllowIngressToNamespace(map[string]string{"netpol-ns": "d2"}),
+			//crd.DenyAll,
+		),
+		// allow -> d2; deny d1 ->; who wins?
+		{
+			examples.AllowAllIngressNetworkingPolicy("d2"),
+			examples.AllowNothingFrom("d1", metav1.LabelSelector{}),
+		},
+		// deny d1 ->; allow -> d2; who wins?
+		{
+			examples.AllowNothingFrom("d1", metav1.LabelSelector{}),
+			examples.AllowAllIngressNetworkingPolicy("d2"),
+		},
+		{
+			examples.AllowFromToNsLabels("d1", metav1.LabelSelector{}, map[string]string{"netpol-ns": "d2"}),
+			examples.AllowAllIngressNetworkingPolicy("d2"),
+		},
+		{
+			examples.AllowAllIngressNetworkingPolicy("d2"),
+			examples.AllowFromToNsLabels("d1", metav1.LabelSelector{}, map[string]string{"netpol-ns": "d2"}),
+		},
 	}
-	for _, pol := range pols {
-		netpols := crd.Reduce(pol)
-		for _, netpol := range netpols {
-			nYaml, err := yaml.Marshal(netpol)
+	for i, pols := range polGroups {
+		for _, cleanNs := range []string{"default", "d1", "d2"} {
+			utils.DoOrDie(k8s.CleanNetworkPolicies(cleanNs))
+		}
+		for _, pol := range pols {
+			nYaml, err := yaml.Marshal(pol)
 			utils.DoOrDie(err)
 			log.Infof("creating policy: \n\n%s\n\n", nYaml)
-			_, err = k8s.CreateNetworkPolicy(netpol)
+			_, err = k8s.CreateNetworkPolicy(pol)
 			utils.DoOrDie(err)
 		}
+
+		results, err := k8s.ProbePodToPod(namespaceList, 2)
+		utils.DoOrDie(err)
+		log.Infof("%d results:", i + 1)
+		results.Table().Render()
 	}
 
-	_, err = k8s.CreateNetworkPolicy(crd.AllowAllIngressNetworkingPolicy("d2"))
-	utils.DoOrDie(err)
-	allowAllToD2, err := k8s.ProbePodToPod(namespaceList, 2)
-	utils.DoOrDie(err)
-	fmt.Println("allow-all-to-d2 results:")
-	allowAllToD2.Table().Render()
-
-	_, err = k8s.CreateNetworkPolicy(AllowNothingFrom("d1", metav1.LabelSelector{}))
-	utils.DoOrDie(err)
-
-	// 6. probe again
-	secondResults, err := k8s.ProbePodToPod(namespaceList, 2)
-	utils.DoOrDie(err)
-	fmt.Println("deny-all-from-d1 results:")
-	secondResults.Table().Render()
-
-	// 7. allow some ingress
-	_, err = k8s.CreateNetworkPolicy(AllowFromTo("d1", metav1.LabelSelector{}, map[string]string{"netpol-ns": "d2"}))
-	utils.DoOrDie(err)
-	//_, err = k8s.CreateNetworkPolicy(crd.AllowAllIngressNetworkingPolicy("d2"))
-	//utils.DoOrDie(err)
-
-	// 8. probe again
-	thirdResults, err := k8s.ProbePodToPod(namespaceList, 2)
-	utils.DoOrDie(err)
-	fmt.Println("allow-all-to-d2 results:")
-	thirdResults.Table().Render()
-
 	// 9. make a nice visualization of netpols
-	panic("TODO")
+	log.Warnf("TODO make a nice netpol visualization")
 }
 
 func kubeToNew() {
