@@ -27,8 +27,23 @@ func (k *Kubernetes) CreateService(namespace string, svc *v1.Service) (*v1.Servi
 	return k.ClientSet.CoreV1().Services(namespace).Create(context.TODO(), svc, metav1.CreateOptions{})
 }
 
-func SimpleDaemonSet() *appsv1.DaemonSet {
-	name := "netpol"
+func (k *Kubernetes) CreateServiceIfNotExists(namespace string, svc *v1.Service) (*v1.Service, error) {
+	created, err := k.ClientSet.CoreV1().Services(namespace).Create(context.TODO(), svc, metav1.CreateOptions{})
+	if err == nil {
+		return created, nil
+	}
+	if err.Error() == fmt.Sprintf(`services "%s" already exists`, svc.Name) {
+		return nil, nil
+	}
+	return nil, err
+}
+
+type NetpolServer struct {
+	Name string
+}
+
+func (ns *NetpolServer)SimpleDaemonSet() *appsv1.DaemonSet {
+	name := ns.Name
 	return &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -72,17 +87,18 @@ func SimpleDaemonSet() *appsv1.DaemonSet {
 	}
 }
 
-func SimpleService() *v1.Service {
+func (ns *NetpolServer)SimpleService() *v1.Service {
+	name := ns.Name
 	return &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: map[string]string{"component": "netpol-server"},
-			Name:   "netpol-server",
+			Labels: map[string]string{"component": name},
+			Name:   name,
 		},
 		Spec: v1.ServiceSpec{
 			Ports: []v1.ServicePort{
 				{Name: "port-7890", Port: 7890},
 			},
-			Selector: map[string]string{"component": "netpol-server"},
+			Selector: map[string]string{"component": name},
 		},
 		Status: v1.ServiceStatus{},
 	}

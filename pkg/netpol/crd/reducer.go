@@ -14,7 +14,7 @@ import (
 func AllowAllIngressNetworkingPolicy(namespace string) *networkingv1.NetworkPolicy {
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "allow-all",
+			Name:      fmt.Sprintf("allow-all-to-%s", namespace),
 			Namespace: namespace,
 		},
 		Spec: networkingv1.NetworkPolicySpec{
