@@ -35,3 +35,9 @@ allow or deny the traffic.  If multiple policies match traffic, the policy prior
 [*Builder*](https://github.com/mattfenwick/kube-prototypes/blob/master/pkg/netpol/crd/builder.go): convert Kubernetes network policies to experimental model (reverse of Reducer)
 
 [*Reducer*](https://github.com/mattfenwick/kube-prototypes/blob/master/pkg/netpol/crd/reducer.go): convert experimental network policies to Kubernetes model (reverse of Builder)
+
+TODOs:
+
+ - add more test cases
+ - fix translation bugs
+ - add support for priority
