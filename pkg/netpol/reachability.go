@@ -5,6 +5,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type Peer struct {
+	Namespace string
+	Pod       string
+}
+
+func (p *Peer) Matches(pod Pod) bool {
+	return (p.Namespace == "" || p.Namespace == pod.Namespace()) && (p.Pod == "" || p.Pod == pod.PodName())
+}
+
 type Reachability struct {
 	Expected *TruthTable
 	Observed *TruthTable
@@ -24,6 +33,15 @@ func NewReachability(pods []Pod, defaultExpectation bool) *Reachability {
 	return r
 }
 
+// AllowLoopback is a convenience func to access Expected and re-enabl
+// all loopback to true.  in general call it after doing other logical
+// stuff in loops since loopback logic follows no policy.
+func (r *Reachability) AllowLoopback() {
+	for _, item := range r.Expected.Items {
+		r.Expected.Set(item, item, true)
+	}
+}
+
 func (r *Reachability) Expect(pod1 Pod, pod2 Pod, isConnected bool) {
 	r.Expected.Set(string(pod1), string(pod2), isConnected)
 }
@@ -41,6 +59,18 @@ func (r *Reachability) ExpectAllEgress(pod Pod, connected bool) {
 	r.Expected.SetAllFrom(string(pod), connected)
 	if !connected {
 		log.Infof("Blacklisting all traffic *from* %s", pod)
+	}
+}
+
+func (r *Reachability) ExpectPeer(from *Peer, to *Peer, connected bool) {
+	for _, fromPod := range r.Pods {
+		if from.Matches(fromPod) {
+			for _, toPod := range r.Pods {
+				if to.Matches(toPod) {
+					r.Expected.Set(string(fromPod), string(toPod), connected)
+				}
+			}
+		}
 	}
 }
 

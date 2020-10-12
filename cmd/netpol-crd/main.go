@@ -31,6 +31,8 @@ func main() {
 	pathToKindSetupScript := "./kind-calico.sh"
 	k8s, err := kube.NewKubernetes()
 	utils.DoOrDie(err)
+	utils.DoOrDie(k8s.CleanNetworkPolicies("default"))
+
 	utils.DoOrDie(k8s.CleanNetworkPolicies("d1"))
 	utils.DoOrDie(k8s.CleanNetworkPolicies("d2"))
 
@@ -55,7 +57,7 @@ func main() {
 	newToKube()
 
 	// 3. install some daemonsets
-	namespaceList := []string{"d1", "d2"}//, "d3"}
+	namespaceList := []string{"d1", "d2"} //, "d3"}
 	netpolDs := &kube.NetpolServer{Name: "netpol"}
 	for _, ns := range namespaceList {
 		_, err = k8s.CreateOrUpdateNamespace(ns, map[string]string{"netpol-ns": ns})
@@ -77,7 +79,7 @@ func main() {
 	initialResults.Table().Render()
 
 	// 5. install a few netpols
-	polGroups := [][]*networkingv1.NetworkPolicy {
+	polGroups := [][]*networkingv1.NetworkPolicy{
 		convertNewToKubePols( // TODO these policies don't work right, kube corner cases are hard to work with
 			//   to deny, they should: select stuff in the target, and select *nothing* in
 			//   the peers
@@ -118,7 +120,7 @@ func main() {
 
 		results, err := k8s.ProbePodToPod(namespaceList, 2)
 		utils.DoOrDie(err)
-		log.Infof("%d results:", i + 1)
+		log.Infof("%d results:", i+1)
 		results.Table().Render()
 	}
 

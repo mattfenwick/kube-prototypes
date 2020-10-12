@@ -33,7 +33,7 @@ func AllowFromToNsLabels(namespace string, selector metav1.LabelSelector, nsLabe
 					To: []networkingv1.NetworkPolicyPeer{
 						{
 							NamespaceSelector: &metav1.LabelSelector{
-								MatchLabels:      nsLabels,
+								MatchLabels: nsLabels,
 							},
 						},
 					},

@@ -1,5 +1,6 @@
 #!/bin/bash
 
+CLUSTER_NAME=${CLUSTER_NAME:-calico}
 CALICO_CONF=kind-calico.yaml
 
 # See https://alexbrand.dev/post/creating-a-kind-cluster-with-calico-networking/
@@ -17,7 +18,7 @@ nodes:
 EOF
 
 
-kind create cluster --name=calico --config=$CALICO_CONF
+kind create cluster --name=$CLUSTER_NAME --config=$CALICO_CONF
 
 sleep 5
 

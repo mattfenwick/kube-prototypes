@@ -42,7 +42,7 @@ type NetpolServer struct {
 	Name string
 }
 
-func (ns *NetpolServer)SimpleDaemonSet() *appsv1.DaemonSet {
+func (ns *NetpolServer) SimpleDaemonSet() *appsv1.DaemonSet {
 	name := ns.Name
 	return &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -87,7 +87,7 @@ func (ns *NetpolServer)SimpleDaemonSet() *appsv1.DaemonSet {
 	}
 }
 
-func (ns *NetpolServer)SimpleService() *v1.Service {
+func (ns *NetpolServer) SimpleService() *v1.Service {
 	name := ns.Name
 	return &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
