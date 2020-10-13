@@ -3,9 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	kube "github.com/mattfenwick/kube-prototypes/pkg/kube"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/crd"
-	"github.com/mattfenwick/kube-prototypes/pkg/netpol/kube"
-	"github.com/mattfenwick/kube-prototypes/pkg/netpol/kube/examples"
+	"github.com/mattfenwick/kube-prototypes/pkg/netpol/netpol-kube"
+	"github.com/mattfenwick/kube-prototypes/pkg/netpol/netpol-kube/examples"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/utils"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -58,7 +59,7 @@ func main() {
 
 	// 3. install some daemonsets
 	namespaceList := []string{"d1", "d2"} //, "d3"}
-	netpolDs := &kube.NetpolServer{Name: "netpol"}
+	netpolDs := &netpol_kube.NetpolServer{Name: "netpol"}
 	for _, ns := range namespaceList {
 		_, err = k8s.CreateOrUpdateNamespace(ns, map[string]string{"netpol-ns": ns})
 		utils.DoOrDie(err)

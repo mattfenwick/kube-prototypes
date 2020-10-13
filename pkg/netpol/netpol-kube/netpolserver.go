@@ -1,42 +1,10 @@
-package kube
+package netpol_kube
 
 import (
-	"context"
-	"fmt"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-func (k *Kubernetes) CreateDaemonSet(namespace string, ds *appsv1.DaemonSet) (*appsv1.DaemonSet, error) {
-	return k.ClientSet.AppsV1().DaemonSets(namespace).Create(context.TODO(), ds, metav1.CreateOptions{})
-}
-
-func (k *Kubernetes) CreateDaemonSetIfNotExists(namespace string, ds *appsv1.DaemonSet) (*appsv1.DaemonSet, error) {
-	created, err := k.ClientSet.AppsV1().DaemonSets(namespace).Create(context.TODO(), ds, metav1.CreateOptions{})
-	if err == nil {
-		return created, nil
-	}
-	if err.Error() == fmt.Sprintf(`daemonsets.apps "%s" already exists`, ds.Name) {
-		return nil, nil
-	}
-	return nil, err
-}
-
-func (k *Kubernetes) CreateService(namespace string, svc *v1.Service) (*v1.Service, error) {
-	return k.ClientSet.CoreV1().Services(namespace).Create(context.TODO(), svc, metav1.CreateOptions{})
-}
-
-func (k *Kubernetes) CreateServiceIfNotExists(namespace string, svc *v1.Service) (*v1.Service, error) {
-	created, err := k.ClientSet.CoreV1().Services(namespace).Create(context.TODO(), svc, metav1.CreateOptions{})
-	if err == nil {
-		return created, nil
-	}
-	if err.Error() == fmt.Sprintf(`services "%s" already exists`, svc.Name) {
-		return nil, nil
-	}
-	return nil, err
-}
 
 type NetpolServer struct {
 	Name string

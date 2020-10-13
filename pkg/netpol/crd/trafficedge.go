@@ -1,7 +1,7 @@
 package crd
 
 import (
-	"github.com/mattfenwick/kube-prototypes/pkg/netpol/kube"
+	"github.com/mattfenwick/kube-prototypes/pkg/netpol/netpol-kube"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -105,19 +105,19 @@ func (ipm *InternalPeerMatcher) Matches(i *InternalPeer) bool {
 	if ipm.Namespace != nil && !ipm.Namespace.Matches(i.Namespace) {
 		return false
 	}
-	if ipm.NamespaceLabels != nil && !kube.IsLabelsMatchLabelSelector(i.NamespaceLabels, *ipm.NamespaceLabels) {
+	if ipm.NamespaceLabels != nil && !netpol_kube.IsLabelsMatchLabelSelector(i.NamespaceLabels, *ipm.NamespaceLabels) {
 		return false
 	}
 	if ipm.Node != nil && !ipm.Node.Matches(i.Node) {
 		return false
 	}
-	if ipm.NodeLabels != nil && !kube.IsLabelsMatchLabelSelector(i.NodeLabels, *ipm.NodeLabels) {
+	if ipm.NodeLabels != nil && !netpol_kube.IsLabelsMatchLabelSelector(i.NodeLabels, *ipm.NodeLabels) {
 		return false
 	}
 	if ipm.Pod != nil && !ipm.Pod.Matches(i.Pod) {
 		return false
 	}
-	if ipm.PodLabels != nil && !kube.IsLabelsMatchLabelSelector(i.PodLabels, *ipm.PodLabels) {
+	if ipm.PodLabels != nil && !netpol_kube.IsLabelsMatchLabelSelector(i.PodLabels, *ipm.PodLabels) {
 		return false
 	}
 	return true
@@ -218,5 +218,5 @@ func (ipm *IPMatcher) Matches(ip string) bool {
 	if ipm.Value != nil {
 		return *ipm.Value == ip
 	}
-	return kube.IsIPBlockMatchForIP(ip, ipm.Block)
+	return netpol_kube.IsIPBlockMatchForIP(ip, ipm.Block)
 }

@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/mattfenwick/kube-prototypes/pkg/kube"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/crd"
-	"github.com/mattfenwick/kube-prototypes/pkg/netpol/kube"
-	"github.com/mattfenwick/kube-prototypes/pkg/netpol/kube/examples"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/matcher"
+	"github.com/mattfenwick/kube-prototypes/pkg/netpol/netpol-kube/examples"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -252,104 +252,59 @@ func getServices(k8s *kube.Kubernetes, namespaces []string) ([]v1.Service, error
 }
 
 func probePodToPod(namespaces []string, k8s *kube.Kubernetes, timeoutSeconds int) {
-	table, err := k8s.ProbePodToPod(namespaces, timeoutSeconds)
+	pods, err := k8s.GetPodsInNamespaces(namespaces)
 	utils.DoOrDie(err)
 
-	table.Table().Render()
-}
-
-func probeContainerToContainer(namespaces []string, k8s *kube.Kubernetes, timeoutSeconds int) {
-	pods, err := kube.GetPods(k8s, namespaces)
-	utils.DoOrDie(err)
-
-	var items []string
-	for _, p := range pods {
-		items = append(items, kube.PodKey(p))
-	}
-
-	table := netpol.NewStringTruthTable(items)
-	for _, fromPod := range pods {
-		for _, fromCont := range fromPod.Spec.Containers {
-			fromContainer := fromCont.Name
-			for _, toPod := range pods {
-				for _, toCont := range toPod.Spec.Containers {
-					log.Infof("Probing %s -> %s", kube.PodKey(fromPod), kube.PodKey(toPod))
-					//connected, err := k8s.ProbeWithPod(fromPod, toPod, port)
-					if len(toCont.Ports) == 0 {
-						table.Set(kube.PodKey(fromPod), kube.PodKey(toPod), "no ports")
-						continue
-					}
-					connected, curlExitCode, err := k8s.ProbeFromContainerToPod(&kube.ProbeFromContainerToPod{
-						FromNamespace:      fromPod.Namespace,
-						FromPod:            fromPod.Name,
-						FromContainer:      fromContainer,
-						ToIP:               toPod.Status.PodIP,
-						ToPort:             int(toCont.Ports[0].ContainerPort),
-						ToNamespace:        toPod.Namespace,
-						ToPod:              toPod.Name,
-						CurlTimeoutSeconds: timeoutSeconds,
-					})
-					log.Warningf("curl exit code: %d", curlExitCode)
-					if err != nil {
-						log.Errorf("unable to make main observation on %s -> %s: %+v", fromPod.Name, toPod.Name, err)
-					}
-					if !connected {
-						log.Warnf("FAILED CONNECTION FOR WHITELISTED PODS %s -> %s !!!! ", fromPod.Name, toPod.Name)
-					}
-					table.Set(kube.PodKey(fromPod), kube.PodKey(toPod), fmt.Sprintf("%d", curlExitCode))
-				}
-			}
+	var jobs []*kube.ProbeJob
+	// TODO could verify that each pod only has one container, each container only has one port, etc.
+	for _, from := range pods {
+		for _, to := range pods {
+			jobs = append(jobs, &kube.ProbeJob{
+				FromNamespace:      from.Namespace,
+				FromPod:            from.Name,
+				FromContainer:      from.Spec.Containers[0].Name,
+				ToAddress:          to.Status.PodIP,
+				ToPort:             int(to.Spec.Containers[0].Ports[0].ContainerPort),
+				CurlTimeoutSeconds: timeoutSeconds,
+				// TODO
+				//FromKey:            "",
+				//ToKey:              "",
+			})
 		}
 	}
+
+	table := k8s.ProbeConnectivity(jobs)
 
 	table.Table().Render()
 }
 
 func probeContainerToService(namespaces []string, k8s *kube.Kubernetes, timeoutSeconds int) {
-	log.Fatalf("TODO services are broken -- need to use fully qualified namespace+service")
-	pods, err := kube.GetPods(k8s, namespaces)
+	pods, err := k8s.GetPodsInNamespaces(namespaces)
 	utils.DoOrDie(err)
 
 	services, err := getServices(k8s, namespaces)
 	utils.DoOrDie(err)
 
-	var froms []string
+	var jobs []*kube.ProbeJob
 	for _, p := range pods {
-		froms = append(froms, kube.PodKey(p))
-	}
-	var tos []string
-	for _, s := range services {
-		tos = append(tos, serviceKey(s))
-	}
-	table := netpol.NewStringTruthTableWithFromsTo(froms, tos)
-
-	for _, fromPod := range pods {
-		for _, fromCont := range fromPod.Spec.Containers {
-			fromContainer := fromCont.Name
-			for _, toService := range services {
-				log.Infof("Probing %s -> %s", kube.PodKey(fromPod), serviceKey(toService))
-				//connected, err := k8s.ProbeWithPod(fromPod, toPod, port)
-				connected, curlExitCode, err := k8s.ProbeFromContainerToPod(&kube.ProbeFromContainerToPod{
-					FromNamespace:      fromPod.Namespace,
-					FromPod:            fromPod.Name,
-					FromContainer:      fromContainer,
-					ToIP:               toService.Name,
-					ToPort:             int(toService.Spec.Ports[0].Port),
-					ToNamespace:        toService.Namespace,
-					ToPod:              "(actually a service)",
+		for _, c := range p.Spec.Containers {
+			for _, s := range services {
+				jobs = append(jobs, &kube.ProbeJob{
+					FromNamespace:      p.Namespace,
+					FromPod:            p.Name,
+					FromContainer:      c.Name,
+					ToAddress:          kube.QualifiedServiceAddress(s.Namespace, s.Name),
+					ToPort:             int(s.Spec.Ports[0].Port),
 					CurlTimeoutSeconds: timeoutSeconds,
+					// TODO
+					//FromKey:            "",
+					//ToKey:              "",
 				})
-				log.Warningf("curl exit code: %d", curlExitCode)
-				if err != nil {
-					log.Errorf("unable to make main observation on %s -> %s: %+v", fromPod.Name, toService.Name, err)
-				}
-				if !connected {
-					log.Warnf("FAILED CONNECTION FOR WHITELISTED PODS %s -> %s !!!! ", fromPod.Name, toService.Name)
-				}
-				table.Set(kube.PodKey(fromPod), serviceKey(toService), fmt.Sprintf("%d", curlExitCode))
 			}
 		}
 	}
+
+	table := k8s.ProbeConnectivity(jobs)
 
 	table.Table().Render()
 }
