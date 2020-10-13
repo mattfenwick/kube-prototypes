@@ -256,20 +256,33 @@ func probePodToPod(namespaces []string, k8s *kube.Kubernetes, timeoutSeconds int
 	utils.DoOrDie(err)
 
 	var jobs []*kube.ProbeJob
-	// TODO could verify that each pod only has one container, each container only has one port, etc.
-	for _, from := range pods {
-		for _, to := range pods {
-			jobs = append(jobs, &kube.ProbeJob{
-				FromNamespace:      from.Namespace,
-				FromPod:            from.Name,
-				FromContainer:      from.Spec.Containers[0].Name,
-				ToAddress:          to.Status.PodIP,
-				ToPort:             int(to.Spec.Containers[0].Ports[0].ContainerPort),
-				CurlTimeoutSeconds: timeoutSeconds,
-				// TODO
-				//FromKey:            "",
-				//ToKey:              "",
-			})
+	for _, fromPod := range pods {
+		for _, fromCont := range fromPod.Spec.Containers {
+			for _, toPod := range pods {
+				for _, toCont := range toPod.Spec.Containers {
+					if len(toCont.Ports) == 0 {
+						log.Warnf("no ports found for %s/%s/%s", toPod.Namespace, toPod.Name, toCont.Name)
+					}
+					for _, toPort := range toCont.Ports {
+						toPort := int(toPort.ContainerPort)
+						fromKey := fmt.Sprintf("%s/%s/%s", fromPod.Namespace, fromPod.Name[:3], fromCont.Name)
+						toKey := fmt.Sprintf("%s/%s:%d", toPod.Namespace, toPod.Name[:3], toPort)
+						//toKey := fmt.Sprintf("%s/%s/%s:%d", toPod.Namespace, toPod.Name[:3], toCont.Name, toPort)
+						log.Infof("creating job %s -> %s", fromKey, toKey)
+						jobs = append(jobs, &kube.ProbeJob{
+							FromNamespace:  fromPod.Namespace,
+							FromPod:        fromPod.Name,
+							FromContainer:  fromCont.Name,
+							ToAddress:      toPod.Status.PodIP,
+							ToPort:         toPort,
+							TimeoutSeconds: timeoutSeconds,
+							// TODO
+							FromKey: fromKey,
+							ToKey:   toKey,
+						})
+					}
+				}
+			}
 		}
 	}
 
@@ -290,12 +303,12 @@ func probeContainerToService(namespaces []string, k8s *kube.Kubernetes, timeoutS
 		for _, c := range p.Spec.Containers {
 			for _, s := range services {
 				jobs = append(jobs, &kube.ProbeJob{
-					FromNamespace:      p.Namespace,
-					FromPod:            p.Name,
-					FromContainer:      c.Name,
-					ToAddress:          kube.QualifiedServiceAddress(s.Namespace, s.Name),
-					ToPort:             int(s.Spec.Ports[0].Port),
-					CurlTimeoutSeconds: timeoutSeconds,
+					FromNamespace:  p.Namespace,
+					FromPod:        p.Name,
+					FromContainer:  c.Name,
+					ToAddress:      kube.QualifiedServiceAddress(s.Namespace, s.Name),
+					ToPort:         int(s.Spec.Ports[0].Port),
+					TimeoutSeconds: timeoutSeconds,
 					// TODO
 					//FromKey:            "",
 					//ToKey:              "",
