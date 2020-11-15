@@ -1,7 +1,7 @@
 package matcher
 
 import (
-	"github.com/mattfenwick/kube-prototypes/pkg/netpol/netpol-kube/examples"
+	"github.com/mattfenwick/kube-prototypes/pkg/kube/netpol/examples"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"

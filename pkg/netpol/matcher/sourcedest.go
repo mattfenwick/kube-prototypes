@@ -2,7 +2,7 @@ package matcher
 
 import (
 	"encoding/json"
-	"github.com/mattfenwick/kube-prototypes/pkg/netpol/netpol-kube"
+	"github.com/mattfenwick/kube-prototypes/pkg/kube"
 	v1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -117,7 +117,7 @@ func (a *AllPodsInMatchingNamespacesSourceDest) Allows(t *Traffic) bool {
 	if t.IsExternal {
 		return false
 	}
-	return netpol_kube.IsLabelsMatchLabelSelector(t.NamespaceLabels, a.NamespaceSelector)
+	return kube.IsLabelsMatchLabelSelector(t.NamespaceLabels, a.NamespaceSelector)
 }
 
 func (a *AllPodsInMatchingNamespacesSourceDest) MarshalJSON() (b []byte, e error) {
@@ -140,7 +140,7 @@ func (p *MatchingPodsInPolicyNamespaceSourceDest) Allows(t *Traffic) bool {
 	if t.IsExternal {
 		return false
 	}
-	return netpol_kube.IsLabelsMatchLabelSelector(t.PodLabels, p.PodSelector) && t.Namespace == p.Namespace
+	return kube.IsLabelsMatchLabelSelector(t.PodLabels, p.PodSelector) && t.Namespace == p.Namespace
 }
 
 func (p *MatchingPodsInPolicyNamespaceSourceDest) MarshalJSON() (b []byte, e error) {
@@ -163,7 +163,7 @@ func (p *MatchingPodsInAllNamespacesSourceDest) Allows(t *Traffic) bool {
 	if t.IsExternal {
 		return false
 	}
-	return netpol_kube.IsLabelsMatchLabelSelector(t.PodLabels, p.PodSelector)
+	return kube.IsLabelsMatchLabelSelector(t.PodLabels, p.PodSelector)
 }
 
 func (p *MatchingPodsInAllNamespacesSourceDest) MarshalJSON() (b []byte, e error) {
@@ -186,8 +186,8 @@ func (s *MatchingPodsInMatchingNamespacesSourceDest) Allows(t *Traffic) bool {
 	if t.IsExternal {
 		return false
 	}
-	return netpol_kube.IsLabelsMatchLabelSelector(t.NamespaceLabels, s.NamespaceSelector) &&
-		netpol_kube.IsLabelsMatchLabelSelector(t.PodLabels, s.PodSelector)
+	return kube.IsLabelsMatchLabelSelector(t.NamespaceLabels, s.NamespaceSelector) &&
+		kube.IsLabelsMatchLabelSelector(t.PodLabels, s.PodSelector)
 }
 
 func (s *MatchingPodsInMatchingNamespacesSourceDest) MarshalJSON() (b []byte, e error) {
@@ -227,5 +227,5 @@ func (ibsd *IPBlockSourceDest) MarshalJSON() (b []byte, e error) {
 }
 
 func (ibsd *IPBlockSourceDest) Allows(t *Traffic) bool {
-	return netpol_kube.IsIPBlockMatchForIP(t.IP, ibsd.IPBlock)
+	return kube.IsIPBlockMatchForIP(t.IP, ibsd.IPBlock)
 }

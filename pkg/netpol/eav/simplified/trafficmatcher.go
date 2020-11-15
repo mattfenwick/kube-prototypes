@@ -1,7 +1,7 @@
 package eav
 
 import (
-	"github.com/mattfenwick/kube-prototypes/pkg/netpol/netpol-kube"
+	"github.com/mattfenwick/kube-prototypes/pkg/kube"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -118,7 +118,7 @@ type KubeMatchExpressionMatcher struct {
 
 func (kmem *KubeMatchExpressionMatcher) Matches(tm *TrafficMap) bool {
 	labels := kmem.Selector.Select(tm).(map[string]string)
-	return netpol_kube.IsMatchExpressionMatchForLabels(labels, kmem.Expression)
+	return kube.IsMatchExpressionMatchForLabels(labels, kmem.Expression)
 }
 
 func KubeMatchExpressions(selector Selector, mes []metav1.LabelSelectorRequirement) TrafficMatcher {
@@ -158,7 +158,7 @@ type IPMatcher struct {
 
 func (ipm *IPMatcher) Matches(tm *TrafficMap) bool {
 	ip := ipm.Selector.Select(tm).(string)
-	return netpol_kube.IsIPInCIDR(ip, ipm.CIDR)
+	return kube.IsIPInCIDR(ip, ipm.CIDR)
 }
 
 func IPBlockMatcher(selector Selector, cidr string, except []string) TrafficMatcher {

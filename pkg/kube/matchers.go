@@ -1,4 +1,4 @@
-package netpol_kube
+package kube
 
 import (
 	"github.com/pkg/errors"

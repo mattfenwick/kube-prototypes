@@ -1,4 +1,4 @@
-package netpol_kube
+package crd
 
 import (
 	appsv1 "k8s.io/api/apps/v1"

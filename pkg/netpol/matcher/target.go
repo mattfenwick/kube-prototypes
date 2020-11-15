@@ -3,7 +3,7 @@ package matcher
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mattfenwick/kube-prototypes/pkg/netpol/netpol-kube"
+	"github.com/mattfenwick/kube-prototypes/pkg/kube"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,7 +24,7 @@ func (t *Target) String() string {
 }
 
 func (t *Target) IsMatch(namespace string, podLabels map[string]string) bool {
-	return t.Namespace == namespace && netpol_kube.IsLabelsMatchLabelSelector(podLabels, t.PodSelector)
+	return t.Namespace == namespace && kube.IsLabelsMatchLabelSelector(podLabels, t.PodSelector)
 }
 
 // Combine creates a new Target combining the egress and ingress rules

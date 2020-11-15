@@ -1,7 +1,7 @@
 package obsolete
 
 import (
-	"github.com/mattfenwick/kube-prototypes/pkg/netpol/netpol-kube"
+	"github.com/mattfenwick/kube-prototypes/pkg/kube"
 	v1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -62,12 +62,12 @@ func (ilpm *InternalLabelsPeerMatcher) IsPeerMatch(peer *Peer) bool {
 	if peer.Internal == nil {
 		return false
 	}
-	return netpol_kube.IsLabelsMatchLabelSelector(peer.Internal.NamespaceLabels, ilpm.NamespaceSelector) &&
-		netpol_kube.IsLabelsMatchLabelSelector(peer.Internal.NodeLabels, ilpm.NodeSelector) &&
-		netpol_kube.IsLabelsMatchLabelSelector(peer.Internal.PodLabels, ilpm.PodSelector) &&
-		netpol_kube.IsNameMatch(peer.Internal.Namespace, ilpm.Namespace) &&
-		netpol_kube.IsNameMatch(peer.Internal.Node, ilpm.Node) &&
-		netpol_kube.IsNameMatch(peer.Internal.Pod, ilpm.Pod)
+	return kube.IsLabelsMatchLabelSelector(peer.Internal.NamespaceLabels, ilpm.NamespaceSelector) &&
+		kube.IsLabelsMatchLabelSelector(peer.Internal.NodeLabels, ilpm.NodeSelector) &&
+		kube.IsLabelsMatchLabelSelector(peer.Internal.PodLabels, ilpm.PodSelector) &&
+		kube.IsNameMatch(peer.Internal.Namespace, ilpm.Namespace) &&
+		kube.IsNameMatch(peer.Internal.Node, ilpm.Node) &&
+		kube.IsNameMatch(peer.Internal.Pod, ilpm.Pod)
 }
 
 type SameNamespacePeerMatcher struct{}
@@ -85,5 +85,5 @@ type IPBlockPeerMatcher struct {
 }
 
 func (ibpm *IPBlockPeerMatcher) IsPeerMatch(peer *Peer) bool {
-	return netpol_kube.IsIPBlockMatchForIP(peer.IP, ibpm.IPBlock)
+	return kube.IsIPBlockMatchForIP(peer.IP, ibpm.IPBlock)
 }
