@@ -119,7 +119,12 @@ func (nc *NetcatCommand) ParseOutput(out string, errorOut string, execErr error)
 			ExitCode: e.Code,
 		}
 	default:
-		panic(errors.Wrapf(execErr, "unexpected error type: %T", e))
+		return &ProbeResult{
+			Out:      out,
+			ErrorOut: errorOut,
+			Err:      e.Error(),
+			ExitCode: -1,
+		}
 		//ncRegexp := regexp.MustCompile(`command terminated with exit code (\d+)`)
 		//matches := ncRegexp.FindStringSubmatch(execErr.Error())
 		//if len(matches) == 0 {

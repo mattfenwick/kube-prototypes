@@ -257,8 +257,16 @@ func probePodToPod(namespaces []string, k8s *kube.Kubernetes, timeoutSeconds int
 
 	var jobs []*kube.ProbeJob
 	for _, fromPod := range pods {
+		if fromPod.Status.Phase != v1.PodRunning {
+			log.Infof("skipping from pod %s/%s, phase is %s", fromPod.Namespace, fromPod.Name, fromPod.Status.Phase)
+			continue
+		}
 		for _, fromCont := range fromPod.Spec.Containers {
 			for _, toPod := range pods {
+				if toPod.Status.Phase != v1.PodRunning {
+					log.Infof("skipping to pod %s/%s, phase is %s", fromPod.Namespace, fromPod.Name, toPod.Status.Phase)
+					continue
+				}
 				for _, toCont := range toPod.Spec.Containers {
 					if len(toCont.Ports) == 0 {
 						log.Warnf("no ports found for %s/%s/%s", toPod.Namespace, toPod.Name, toCont.Name)
@@ -276,6 +284,7 @@ func probePodToPod(namespaces []string, k8s *kube.Kubernetes, timeoutSeconds int
 							ToAddress:      toPod.Status.PodIP,
 							ToPort:         toPort,
 							TimeoutSeconds: timeoutSeconds,
+							CommandType:    kube.ProbeCommandTypeCurl,
 							// TODO
 							FromKey: fromKey,
 							ToKey:   toKey,
