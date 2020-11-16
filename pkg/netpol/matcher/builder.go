@@ -22,6 +22,7 @@ func BuildTarget(netpol *networkingv1.NetworkPolicy) *Target {
 	target := &Target{
 		Namespace:   netpol.Namespace,
 		PodSelector: netpol.Spec.PodSelector,
+		SourceRules: []string{netpol.Name},
 	}
 	for _, pType := range netpol.Spec.PolicyTypes {
 		switch pType {

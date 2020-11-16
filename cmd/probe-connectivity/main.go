@@ -6,17 +6,15 @@ import (
 	"fmt"
 	"github.com/mattfenwick/kube-prototypes/pkg/kube"
 	"github.com/mattfenwick/kube-prototypes/pkg/kube/netpol/examples"
-	"github.com/mattfenwick/kube-prototypes/pkg/netpol"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/crd"
-	"github.com/mattfenwick/kube-prototypes/pkg/netpol/matcher"
 	"github.com/mattfenwick/kube-prototypes/pkg/netpol/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
+	"os"
+	"strconv"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -51,11 +49,48 @@ func setupCommand() *cobra.Command {
 
 	command.PersistentFlags().StringVarP(&flags.Verbosity, "verbosity", "v", "info", "log level; one of [info, debug, trace, warn, error, fatal, panic]")
 
-	command.AddCommand(SetupNetpolCommand())
 	command.AddCommand(SetupProbeCommand())
 	command.AddCommand(SetupCreateNetpolCommand())
+	command.AddCommand(SetupDemoCommand())
 
 	return command
+}
+
+func SetupDemoCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "demo",
+		Short: "probe demo",
+		Long:  "probe demo",
+		Run: func(cmd *cobra.Command, args []string) {
+			k, err := kube.NewKubernetes()
+			utils.DoOrDie(err)
+
+			ns, pod, cont, addr, portString := os.Args[1], os.Args[2], os.Args[3], os.Args[4], os.Args[5]
+			port, err := strconv.Atoi(portString)
+			utils.DoOrDie(err)
+
+			for _, commandType := range []kube.ProbeCommandType{kube.ProbeCommandTypeCurl, kube.ProbeCommandTypeNetcat} {
+
+				job := &kube.ProbeJob{
+					FromNamespace:  ns,
+					FromPod:        pod,
+					FromContainer:  cont,
+					ToAddress:      addr,
+					ToPort:         port,
+					TimeoutSeconds: 1,
+					CommandType:    commandType,
+					//FromKey:        "",
+					//ToKey:          "",
+				}
+				result, err := k.Probe(job)
+				utils.DoOrDie(err)
+
+				bytes, err := json.MarshalIndent(result, "", "  ")
+				utils.DoOrDie(err)
+				fmt.Printf("result: %+v\n\n", string(bytes))
+			}
+		},
+	}
 }
 
 func SetupCreateNetpolCommand() *cobra.Command {
@@ -89,20 +124,6 @@ func SetupCreateNetpolCommand() *cobra.Command {
 			yamlBytes, err = yaml.Marshal(policies)
 			utils.DoOrDie(err)
 			fmt.Printf("%s\n\n", yamlBytes)
-		},
-	}
-
-	return command
-}
-
-func SetupNetpolCommand() *cobra.Command {
-	command := &cobra.Command{
-		Use:   "netpols",
-		Short: "netpol hacking",
-		Long:  "do stuff with network policies",
-		Args:  cobra.ExactArgs(0),
-		Run: func(cmd *cobra.Command, args []string) {
-			mungeNetworkPolicies()
 		},
 	}
 
@@ -151,71 +172,6 @@ func main() {
 	//  - probe pods again
 	// 3. start opening communication between pods
 	// 4. figure out some visualization of connectivity
-}
-
-func mungeNetworkPolicies() {
-	k8s, err := kube.NewKubernetes()
-	utils.DoOrDie(err)
-
-	err = k8s.CleanNetworkPolicies("default")
-	utils.DoOrDie(err)
-
-	var allCreated []*networkingv1.NetworkPolicy
-	for _, np := range examples.AllExamples {
-		createdNp, err := k8s.CreateNetworkPolicy(np)
-		allCreated = append(allCreated, createdNp)
-		utils.DoOrDie(err)
-		//explanation := netpol.ExplainPolicy(np)
-		explanation := netpol.ExplainPolicy(createdNp)
-		fmt.Printf("policy explanation for %s:\n%s\n\n", np.Name, explanation.PrettyPrint())
-
-		matcherExplanation := matcher.Explain(matcher.BuildNetworkPolicy(createdNp))
-		fmt.Printf("\nmatcher explanation: %s\n\n", matcherExplanation)
-
-		reduced := netpol.Reduce(createdNp)
-		fmt.Println(netpol.NodePrettyPrint(reduced))
-		fmt.Println()
-
-		createdNpBytes, err := json.MarshalIndent(createdNp, "", "  ")
-		utils.DoOrDie(err)
-		fmt.Printf("created netpol:\n\n%s\n\n", createdNpBytes)
-
-		matcherPolicy := matcher.BuildNetworkPolicy(createdNp)
-		matcherPolicyBytes, err := json.MarshalIndent(matcherPolicy, "", "  ")
-		utils.DoOrDie(err)
-		fmt.Printf("created matcher netpol:\n\n%s\n\n", matcherPolicyBytes)
-		isAllowed, allowers, matchingTargets := matcherPolicy.IsTrafficAllowed(&matcher.ResolvedTraffic{
-			Traffic: matcher.NewPodTraffic(
-				map[string]string{
-					"app": "bookstore",
-				},
-				map[string]string{},
-				"not-default",
-				true,
-				&matcher.PortProtocol{
-					Protocol: v1.ProtocolTCP,
-					Port:     intstr.FromInt(9800),
-				},
-				"1.2.3.4"),
-			Target: &matcher.ResolvedPodTarget{
-				PodLabels: map[string]string{
-					"app": "web",
-				},
-				NamespaceLabels: nil,
-				Namespace:       "default",
-			},
-		})
-		fmt.Printf("is allowed?  %t\n - allowers: %+v\n - matching targets: %+v\n", isAllowed, allowers, matchingTargets)
-	}
-
-	netpols := matcher.BuildNetworkPolicies(allCreated)
-	bytes, err := json.MarshalIndent(netpols, "", "  ")
-	utils.DoOrDie(err)
-	fmt.Printf("full network policies:\n\n%s\n\n", bytes)
-	fmt.Printf("\nexplained:\n%s\n", matcher.Explain(netpols))
-
-	netpolsExamples := matcher.BuildNetworkPolicy(examples.ExampleComplicatedNetworkPolicy())
-	fmt.Printf("complicated example explained:\n%s\n", matcher.Explain(netpolsExamples))
 }
 
 func runProbe(args *ProbeArgs) {

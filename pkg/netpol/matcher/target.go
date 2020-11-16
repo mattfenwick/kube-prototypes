@@ -16,6 +16,7 @@ type Target struct {
 	PodSelector metav1.LabelSelector
 	Egress      *TrafficPeers
 	Ingress     *TrafficPeers
+	SourceRules []string
 	primaryKey  string
 }
 
@@ -42,6 +43,7 @@ func (t *Target) Combine(other *Target) *Target {
 		PodSelector: t.PodSelector,
 		Egress:      t.Egress.Combine(other.Egress),
 		Ingress:     t.Ingress.Combine(other.Ingress),
+		SourceRules: append(t.SourceRules, other.SourceRules...),
 	}
 }
 

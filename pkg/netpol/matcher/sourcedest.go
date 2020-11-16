@@ -145,7 +145,7 @@ func (p *MatchingPodsInPolicyNamespaceSourceDest) Allows(t *Traffic) bool {
 
 func (p *MatchingPodsInPolicyNamespaceSourceDest) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
-		"Type":        "matchings pods in policy namespace",
+		"Type":        "matching pods in policy namespace",
 		"PodSelector": p.PodSelector,
 		"Namespace":   p.Namespace,
 	})

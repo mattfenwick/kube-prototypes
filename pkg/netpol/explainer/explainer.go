@@ -1,4 +1,4 @@
-package netpol
+package explainer
 
 import (
 	"fmt"

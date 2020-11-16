@@ -25,7 +25,7 @@ type Kubernetes struct {
 func NewKubernetes() (*Kubernetes, error) {
 	clientSet, err := Clientset()
 	if err != nil {
-		return nil, errors.WithMessagef(err, "unable to instantiate kube client")
+		return nil, err
 	}
 	return &Kubernetes{
 		podCache:  map[string][]v1.Pod{},
