@@ -55,20 +55,6 @@ func (t *Target) GetPrimaryKey() string {
 	return t.primaryKey
 }
 
-func (t *Target) Allows(td *ResolvedTraffic) bool {
-	if td.Traffic.IsIngress {
-		if t.Ingress == nil {
-			return false
-		}
-		return t.Ingress.Allows(td)
-	} else {
-		if t.Egress == nil {
-			return false
-		}
-		return t.Egress.Allows(td)
-	}
-}
-
 // SerializeLabelSelector deterministically converts a metav1.LabelSelector
 // into a string
 func SerializeLabelSelector(ls metav1.LabelSelector) string {

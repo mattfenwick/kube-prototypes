@@ -27,30 +27,30 @@ func ExplainTrafficPeers(tp *TrafficPeers) []string {
 	var lines []string
 	for _, sd := range tp.SourcesOrDests {
 		var sourceDest, port string
-		switch t := sd.SourceDest.(type) {
-		case *MatchingPodsInAllNamespacesSourceDest:
+		switch t := sd.Peer.(type) {
+		case *MatchingPodsInAllNamespacesPeerMatcher:
 			sourceDest = fmt.Sprintf("pods matching %s in all namespaces",
 				SerializeLabelSelector(t.PodSelector))
-		case *MatchingPodsInMatchingNamespacesSourceDest:
+		case *MatchingPodsInMatchingNamespacesPeerMatcher:
 			sourceDest = fmt.Sprintf("pods matching %s in namespaces matching %s",
 				SerializeLabelSelector(t.PodSelector),
 				SerializeLabelSelector(t.NamespaceSelector))
-		case *AllPodsInMatchingNamespacesSourceDest:
+		case *AllPodsInMatchingNamespacesPeerMatcher:
 			sourceDest = fmt.Sprintf("all pods in namespaces matching %s",
 				SerializeLabelSelector(t.NamespaceSelector))
-		case *AllPodsInPolicyNamespaceSourceDest:
+		case *AllPodsInPolicyNamespacePeerMatcher:
 			sourceDest = fmt.Sprintf("all pods in namespace %s", t.Namespace)
-		case *MatchingPodsInPolicyNamespaceSourceDest:
+		case *MatchingPodsInPolicyNamespacePeerMatcher:
 			sourceDest = fmt.Sprintf("pods matching %s in namespace %s",
 				SerializeLabelSelector(t.PodSelector), t.Namespace)
-		case *AllPodsAllNamespacesSourceDest:
+		case *AllPodsAllNamespacesPeerMatcher:
 			sourceDest = "all pods in all namespaces"
-		case *AnywhereSourceDest:
+		case *AnywherePeerMatcher:
 			sourceDest = "anywhere: all pods in all namespaces and all IPs"
-		case *IPBlockSourceDest:
+		case *IPBlockPeerMatcher:
 			sourceDest = fmt.Sprintf("IPBlock: cidr %s, except %+v", t.IPBlock.CIDR, t.IPBlock.Except)
 		default:
-			panic(errors.Errorf("unexpected SourceDest type %T", t))
+			panic(errors.Errorf("unexpected PeerMatcher type %T", t))
 		}
 		switch p := sd.Port.(type) {
 		case *AllPortsOnProtocol:

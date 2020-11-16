@@ -36,7 +36,7 @@ func BuildTarget(netpol *networkingv1.NetworkPolicy) *Target {
 }
 
 func BuildTrafficPeersFromIngress(policyNamespace string, ingresses []networkingv1.NetworkPolicyIngressRule) *TrafficPeers {
-	var sdaps []*SourceDestAndPort
+	var sdaps []*PeerPortMatcher
 	for _, ingress := range ingresses {
 		sdaps = append(sdaps, BuildSourceDestAndPorts(policyNamespace, ingress.Ports, ingress.From)...)
 	}
@@ -44,33 +44,33 @@ func BuildTrafficPeersFromIngress(policyNamespace string, ingresses []networking
 }
 
 func BuildTrafficPeersFromEgress(policyNamespace string, egresses []networkingv1.NetworkPolicyEgressRule) *TrafficPeers {
-	var sdaps []*SourceDestAndPort
+	var sdaps []*PeerPortMatcher
 	for _, egress := range egresses {
 		sdaps = append(sdaps, BuildSourceDestAndPorts(policyNamespace, egress.Ports, egress.To)...)
 	}
 	return &TrafficPeers{SourcesOrDests: sdaps}
 }
 
-func BuildSourceDestAndPorts(policyNamespace string, npPorts []networkingv1.NetworkPolicyPort, peers []networkingv1.NetworkPolicyPeer) []*SourceDestAndPort {
+func BuildSourceDestAndPorts(policyNamespace string, npPorts []networkingv1.NetworkPolicyPort, peers []networkingv1.NetworkPolicyPeer) []*PeerPortMatcher {
 	// 1. build ports
 	ports := BuildPortsFromSlice(npPorts)
 	// 2. build SourceDests
 	sds := BuildSourceDestsFromSlice(policyNamespace, peers)
 	// 3. build the cartesian product of ports and SourceDests
-	var sdaps []*SourceDestAndPort
+	var sdaps []*PeerPortMatcher
 	for _, port := range ports {
 		for _, sd := range sds {
-			sdaps = append(sdaps, &SourceDestAndPort{
-				SourceDest: sd,
-				Port:       port,
+			sdaps = append(sdaps, &PeerPortMatcher{
+				Peer: sd,
+				Port: port,
 			})
 		}
 	}
 	return sdaps
 }
 
-func BuildPortsFromSlice(npPorts []networkingv1.NetworkPolicyPort) []Port {
-	var ports []Port
+func BuildPortsFromSlice(npPorts []networkingv1.NetworkPolicyPort) []PortMatcher {
+	var ports []PortMatcher
 	if len(npPorts) == 0 {
 		ports = append(ports, &AllPortsAllProtocols{})
 	} else {
@@ -81,10 +81,10 @@ func BuildPortsFromSlice(npPorts []networkingv1.NetworkPolicyPort) []Port {
 	return ports
 }
 
-func BuildSourceDestsFromSlice(policyNamespace string, peers []networkingv1.NetworkPolicyPeer) []SourceDest {
-	var sds []SourceDest
+func BuildSourceDestsFromSlice(policyNamespace string, peers []networkingv1.NetworkPolicyPeer) []PeerMatcher {
+	var sds []PeerMatcher
 	if len(peers) == 0 {
-		sds = append(sds, &AnywhereSourceDest{})
+		sds = append(sds, &AnywherePeerMatcher{})
 	} else {
 		for _, from := range peers {
 			sds = append(sds, BuildSourceDest(policyNamespace, from))
@@ -97,33 +97,33 @@ func isLabelSelectorEmpty(l metav1.LabelSelector) bool {
 	return len(l.MatchLabels) == 0 && len(l.MatchExpressions) == 0
 }
 
-func BuildSourceDest(policyNamespace string, peer networkingv1.NetworkPolicyPeer) SourceDest {
+func BuildSourceDest(policyNamespace string, peer networkingv1.NetworkPolicyPeer) PeerMatcher {
 	if peer.IPBlock != nil {
-		return &IPBlockSourceDest{peer.IPBlock}
+		return &IPBlockPeerMatcher{peer.IPBlock}
 	}
 	podSel := peer.PodSelector
 	nsSel := peer.NamespaceSelector
 	if podSel == nil || isLabelSelectorEmpty(*podSel) {
 		if nsSel == nil {
-			return &AllPodsInPolicyNamespaceSourceDest{Namespace: policyNamespace}
+			return &AllPodsInPolicyNamespacePeerMatcher{Namespace: policyNamespace}
 		} else if isLabelSelectorEmpty(*nsSel) {
-			return &AllPodsAllNamespacesSourceDest{}
+			return &AllPodsAllNamespacesPeerMatcher{}
 		} else {
 			// nsSel has some stuff
-			return &AllPodsInMatchingNamespacesSourceDest{NamespaceSelector: *nsSel}
+			return &AllPodsInMatchingNamespacesPeerMatcher{NamespaceSelector: *nsSel}
 		}
 	} else {
 		// podSel has some stuff
 		if nsSel == nil {
-			return &MatchingPodsInPolicyNamespaceSourceDest{
+			return &MatchingPodsInPolicyNamespacePeerMatcher{
 				PodSelector: *podSel,
 				Namespace:   policyNamespace,
 			}
 		} else if isLabelSelectorEmpty(*nsSel) {
-			return &MatchingPodsInAllNamespacesSourceDest{PodSelector: *podSel}
+			return &MatchingPodsInAllNamespacesPeerMatcher{PodSelector: *podSel}
 		} else {
 			// nsSel has some stuff
-			return &MatchingPodsInMatchingNamespacesSourceDest{
+			return &MatchingPodsInMatchingNamespacesPeerMatcher{
 				PodSelector:       *podSel,
 				NamespaceSelector: *nsSel,
 			}
@@ -131,7 +131,7 @@ func BuildSourceDest(policyNamespace string, peer networkingv1.NetworkPolicyPeer
 	}
 }
 
-func BuildPort(p networkingv1.NetworkPolicyPort) Port {
+func BuildPort(p networkingv1.NetworkPolicyPort) PortMatcher {
 	protocol := v1.ProtocolTCP
 	if p.Protocol != nil {
 		protocol = *p.Protocol

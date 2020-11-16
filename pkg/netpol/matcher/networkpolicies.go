@@ -40,29 +40,72 @@ func (np *NetworkPolicies) TargetsApplyingToNamespace(namespace string) []*Targe
 	return targets
 }
 
+type DirectionResult struct {
+	IsAllowed       bool
+	AllowingTargets []*Target
+	MatchingTargets []*Target
+}
+
+type AllowedResult struct {
+	Ingress *DirectionResult
+	Egress  *DirectionResult
+}
+
+func (ar *AllowedResult) IsAllowed() bool {
+	return ar.Ingress.IsAllowed && ar.Egress.IsAllowed
+}
+
 // IsTrafficAllowed returns:
 // - whether the traffic is allowed
 // - which rules allowed the traffic
 // - which rules matched the traffic target
-func (np *NetworkPolicies) IsTrafficAllowed(trafficDirection *ResolvedTraffic) (bool, []*Target, []*Target) {
-	matchingTargets := np.TargetsApplyingToPod(trafficDirection.Target.Namespace, trafficDirection.Target.PodLabels)
+func (np *NetworkPolicies) IsTrafficAllowed(traffic *Traffic) *AllowedResult {
+	return &AllowedResult{
+		Ingress: np.IsIngressOrEgressAllowed(traffic, true),
+		Egress:  np.IsIngressOrEgressAllowed(traffic, false),
+	}
+}
+
+func (np *NetworkPolicies) IsIngressOrEgressAllowed(traffic *Traffic, isIngress bool) *DirectionResult {
+	var target *TrafficPeer
+	var peer *TrafficPeer
+	if isIngress {
+		target = traffic.Destination
+		peer = traffic.Source
+	} else {
+		target = traffic.Source
+		peer = traffic.Destination
+	}
+
+	// 1. if target is external to cluster -> allow
+	if target.Internal == nil {
+		return &DirectionResult{IsAllowed: true, AllowingTargets: nil, MatchingTargets: nil}
+	}
+
+	matchingTargets := np.TargetsApplyingToPod(target.Internal.Namespace, target.Internal.PodLabels)
 
 	// No targets match => automatic allow
 	if len(matchingTargets) == 0 {
-		return true, nil, nil
+		return &DirectionResult{IsAllowed: true, AllowingTargets: nil, MatchingTargets: nil}
 	}
 
 	// Check if any matching targets allow this traffic
 	var allowers []*Target
-	for _, match := range matchingTargets {
-		if match.Allows(trafficDirection) {
-			allowers = append(allowers, match)
+	for _, target := range matchingTargets {
+		if isIngress {
+			if target.Ingress.Allows(peer, traffic.PortProtocol) {
+				allowers = append(allowers, target)
+			}
+		} else {
+			if target.Egress.Allows(peer, traffic.PortProtocol) {
+				allowers = append(allowers, target)
+			}
 		}
 	}
 	if len(allowers) > 0 {
-		return true, allowers, matchingTargets
+		return &DirectionResult{IsAllowed: true, AllowingTargets: allowers, MatchingTargets: matchingTargets}
 	}
 
 	// Otherwise, deny
-	return false, nil, matchingTargets
+	return &DirectionResult{IsAllowed: false, AllowingTargets: nil, MatchingTargets: matchingTargets}
 }

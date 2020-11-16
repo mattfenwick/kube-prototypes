@@ -6,7 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-type Port interface {
+type PortMatcher interface {
 	Allows(port *PortProtocol) bool
 }
 

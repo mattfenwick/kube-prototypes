@@ -3,23 +3,20 @@ package matcher
 import (
 	"encoding/json"
 	"github.com/mattfenwick/kube-prototypes/pkg/kube"
-	v1 "k8s.io/api/networking/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type SourceDestAndPort struct {
-	SourceDest SourceDest
-	Port       Port
+type PeerPortMatcher struct {
+	Peer PeerMatcher
+	Port PortMatcher
 }
 
-func (sdap *SourceDestAndPort) Allows(rt *ResolvedTraffic) bool {
-	if !sdap.Port.Allows(rt.Traffic.Port) {
-		return false
-	}
-	return sdap.SourceDest.Allows(rt.Traffic)
+func (sdap *PeerPortMatcher) Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool {
+	return sdap.Port.Allows(portProtocol) && sdap.Peer.Allows(peer)
 }
 
-// NetworkPolicyPeer possibilities:
+// PeerPortMatcher possibilities:
 // 1. PodSelector:
 //   - empty/nil
 //   - not empty
@@ -63,87 +60,87 @@ func (sdap *SourceDestAndPort) Allows(rt *ResolvedTraffic) bool {
 //   - don't have anything at all -- i.e. empty []NetworkPolicyPeer
 //
 
-type SourceDest interface {
-	Allows(t *Traffic) bool
+type PeerMatcher interface {
+	Allows(peer *TrafficPeer) bool
 }
 
-// AllPodsInPolicyNamespaceSourceDest models the case where in NetworkPolicyPeer:
+// AllPodsInPolicyNamespacePeerMatcher models the case where in NetworkPolicyPeer:
 // - PodSelector is empty or nil
 // - NamespaceSelector is nil
 // - IPBlock is nil
-type AllPodsInPolicyNamespaceSourceDest struct {
+type AllPodsInPolicyNamespacePeerMatcher struct {
 	Namespace string
 }
 
-func (p *AllPodsInPolicyNamespaceSourceDest) Allows(t *Traffic) bool {
-	if t.IsExternal {
+func (p *AllPodsInPolicyNamespacePeerMatcher) Allows(peer *TrafficPeer) bool {
+	if peer.IsExternal() {
 		return false
 	}
-	return t.Namespace == p.Namespace
+	return peer.Namespace() == p.Namespace
 }
 
-func (p *AllPodsInPolicyNamespaceSourceDest) MarshalJSON() (b []byte, e error) {
+func (p *AllPodsInPolicyNamespacePeerMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type":      "all pods in policy namespace",
 		"Namespace": p.Namespace,
 	})
 }
 
-// AllPodsAllNamespacesSourceDest models the case where in NetworkPolicyPeer:
+// AllPodsAllNamespacesPeerMatcher models the case where in NetworkPolicyPeer:
 // - PodSelector is nil or empty
 // - NamespaceSelector is empty (but not nil!)
 // - IPBlock is nil
-type AllPodsAllNamespacesSourceDest struct{}
+type AllPodsAllNamespacesPeerMatcher struct{}
 
-func (a *AllPodsAllNamespacesSourceDest) Allows(t *Traffic) bool {
-	return !t.IsExternal
+func (a *AllPodsAllNamespacesPeerMatcher) Allows(peer *TrafficPeer) bool {
+	return !peer.IsExternal()
 }
 
-func (a *AllPodsAllNamespacesSourceDest) MarshalJSON() (b []byte, e error) {
+func (a *AllPodsAllNamespacesPeerMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type": "all pods in all namespaces",
 	})
 }
 
-// AllPodsInMatchingNamespacesSourceDest models the case where in NetworkPolicyPeer:
+// AllPodsInMatchingNamespacesPeerMatcher models the case where in NetworkPolicyPeer:
 // - PodSelector is nil or empty
 // - NamespaceSelector is not empty
 // - IPBlock is nil
-type AllPodsInMatchingNamespacesSourceDest struct {
+type AllPodsInMatchingNamespacesPeerMatcher struct {
 	NamespaceSelector metav1.LabelSelector
 }
 
-func (a *AllPodsInMatchingNamespacesSourceDest) Allows(t *Traffic) bool {
-	if t.IsExternal {
+func (a *AllPodsInMatchingNamespacesPeerMatcher) Allows(peer *TrafficPeer) bool {
+	if peer.IsExternal() {
 		return false
 	}
-	return kube.IsLabelsMatchLabelSelector(t.NamespaceLabels, a.NamespaceSelector)
+	return kube.IsLabelsMatchLabelSelector(peer.Internal.NamespaceLabels, a.NamespaceSelector)
 }
 
-func (a *AllPodsInMatchingNamespacesSourceDest) MarshalJSON() (b []byte, e error) {
+func (a *AllPodsInMatchingNamespacesPeerMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type":              "all pods in matching namespaces",
 		"NamespaceSelector": a.NamespaceSelector,
 	})
 }
 
-// MatchingPodsInPolicyNamespaceSourceDest models the case where in NetworkPolicyPeer:
+// MatchingPodsInPolicyNamespacePeerMatcher models the case where in NetworkPolicyPeer:
 // - PodSelector is not empty
 // - NamespaceSelector is nil
 // - IPBlock is nil
-type MatchingPodsInPolicyNamespaceSourceDest struct {
+type MatchingPodsInPolicyNamespacePeerMatcher struct {
 	PodSelector metav1.LabelSelector
 	Namespace   string
 }
 
-func (p *MatchingPodsInPolicyNamespaceSourceDest) Allows(t *Traffic) bool {
-	if t.IsExternal {
+func (p *MatchingPodsInPolicyNamespacePeerMatcher) Allows(peer *TrafficPeer) bool {
+	if peer.IsExternal() {
 		return false
 	}
-	return kube.IsLabelsMatchLabelSelector(t.PodLabels, p.PodSelector) && t.Namespace == p.Namespace
+	return kube.IsLabelsMatchLabelSelector(peer.Internal.PodLabels, p.PodSelector) && peer.Namespace() == p.Namespace
 }
 
-func (p *MatchingPodsInPolicyNamespaceSourceDest) MarshalJSON() (b []byte, e error) {
+func (p *MatchingPodsInPolicyNamespacePeerMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type":        "matching pods in policy namespace",
 		"PodSelector": p.PodSelector,
@@ -151,46 +148,47 @@ func (p *MatchingPodsInPolicyNamespaceSourceDest) MarshalJSON() (b []byte, e err
 	})
 }
 
-// MatchingPodsInAllNamespacesSourceDest models the case where in NetworkPolicyPeer:
+// MatchingPodsInAllNamespacesPeerMatcher models the case where in NetworkPolicyPeer:
 // - PodSelector is not nil
 // - NamespaceSelector is empty (but not nil!)
 // - IPBlock is nil
-type MatchingPodsInAllNamespacesSourceDest struct {
+type MatchingPodsInAllNamespacesPeerMatcher struct {
 	PodSelector metav1.LabelSelector
 }
 
-func (p *MatchingPodsInAllNamespacesSourceDest) Allows(t *Traffic) bool {
-	if t.IsExternal {
+func (p *MatchingPodsInAllNamespacesPeerMatcher) Allows(peer *TrafficPeer) bool {
+	if peer.IsExternal() {
 		return false
 	}
-	return kube.IsLabelsMatchLabelSelector(t.PodLabels, p.PodSelector)
+	return kube.IsLabelsMatchLabelSelector(peer.Internal.PodLabels, p.PodSelector)
 }
 
-func (p *MatchingPodsInAllNamespacesSourceDest) MarshalJSON() (b []byte, e error) {
+func (p *MatchingPodsInAllNamespacesPeerMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type":        "pods in all namespaces",
 		"PodSelector": p.PodSelector,
 	})
 }
 
-// MatchingPodsInMatchingNamespacesSourceDest models the case where in NetworkPolicyPeer:
+// MatchingPodsInMatchingNamespacesPeerMatcher models the case where in NetworkPolicyPeer:
 // - PodSelector is not nil
 // - NamespaceSelector is not empty
 // - IPBlock is nil
-type MatchingPodsInMatchingNamespacesSourceDest struct {
+type MatchingPodsInMatchingNamespacesPeerMatcher struct {
 	PodSelector       metav1.LabelSelector
 	NamespaceSelector metav1.LabelSelector
 }
 
-func (s *MatchingPodsInMatchingNamespacesSourceDest) Allows(t *Traffic) bool {
-	if t.IsExternal {
+func (s *MatchingPodsInMatchingNamespacesPeerMatcher) Allows(peer *TrafficPeer) bool {
+	if peer.IsExternal() {
 		return false
 	}
-	return kube.IsLabelsMatchLabelSelector(t.NamespaceLabels, s.NamespaceSelector) &&
-		kube.IsLabelsMatchLabelSelector(t.PodLabels, s.PodSelector)
+	internal := peer.Internal
+	return kube.IsLabelsMatchLabelSelector(internal.NamespaceLabels, s.NamespaceSelector) &&
+		kube.IsLabelsMatchLabelSelector(internal.PodLabels, s.PodSelector)
 }
 
-func (s *MatchingPodsInMatchingNamespacesSourceDest) MarshalJSON() (b []byte, e error) {
+func (s *MatchingPodsInMatchingNamespacesPeerMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type":              "matching pods in matching namespaces",
 		"PodSelector":       s.PodSelector,
@@ -198,27 +196,26 @@ func (s *MatchingPodsInMatchingNamespacesSourceDest) MarshalJSON() (b []byte, e 
 	})
 }
 
-// AnywhereSourceDest models the case where NetworkPolicy(E|In)gressRule.(From|To) is empty
-type AnywhereSourceDest struct{}
+// AnywherePeerMatcher models the case where NetworkPolicy(E|In)gressRule.(From|To) is empty
+type AnywherePeerMatcher struct{}
 
-func (a *AnywhereSourceDest) Allows(t *Traffic) bool {
+func (a *AnywherePeerMatcher) Allows(peer *TrafficPeer) bool {
 	return true
 }
 
-func (a *AnywhereSourceDest) MarshalJSON() (b []byte, e error) {
+func (a *AnywherePeerMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type": "anywhere",
 	})
 }
 
-// IPBlockSourceDest models the case where IPBlock is not nil, and both
+// IPBlockPeerMatcher models the case where IPBlock is not nil, and both
 // PodSelector and NamespaceSelector are nil
-type IPBlockSourceDest struct {
-	// required
-	IPBlock *v1.IPBlock
+type IPBlockPeerMatcher struct {
+	IPBlock *networkingv1.IPBlock
 }
 
-func (ibsd *IPBlockSourceDest) MarshalJSON() (b []byte, e error) {
+func (ibsd *IPBlockPeerMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type":   "IPBlock",
 		"CIDR":   ibsd.IPBlock.CIDR,
@@ -226,6 +223,6 @@ func (ibsd *IPBlockSourceDest) MarshalJSON() (b []byte, e error) {
 	})
 }
 
-func (ibsd *IPBlockSourceDest) Allows(t *Traffic) bool {
-	return kube.IsIPBlockMatchForIP(t.IP, ibsd.IPBlock)
+func (ibsd *IPBlockPeerMatcher) Allows(peer *TrafficPeer) bool {
+	return kube.IsIPBlockMatchForIP(peer.IP, ibsd.IPBlock)
 }

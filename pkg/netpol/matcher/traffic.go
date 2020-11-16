@@ -1,36 +1,33 @@
 package matcher
 
-// Traffic represents a request from or to a target's source/dest counterpart
 type Traffic struct {
-	IsExternal      bool
-	PodLabels       map[string]string
+	Source      *TrafficPeer
+	Destination *TrafficPeer
+
+	PortProtocol *PortProtocol
+}
+
+type TrafficPeer struct {
+	Internal *InternalPeer
+	IP       string
+}
+
+func (p *TrafficPeer) Namespace() string {
+	if p.Internal == nil {
+		return ""
+	}
+	return p.Internal.Namespace
+}
+
+func (p *TrafficPeer) IsExternal() bool {
+	return p.Internal == nil
+}
+
+type InternalPeer struct {
+	PodLabels map[string]string
+	//Pod             string
 	NamespaceLabels map[string]string
 	Namespace       string
-	IsIngress       bool
-	Port            *PortProtocol
-	IP              string
-}
-
-func NewPodTraffic(podLabels map[string]string, nsLabels map[string]string, ns string, isIngress bool, port *PortProtocol, ip string) *Traffic {
-	return &Traffic{
-		IsExternal:      false,
-		PodLabels:       podLabels,
-		NamespaceLabels: nsLabels,
-		Namespace:       ns,
-		IsIngress:       isIngress,
-		Port:            port,
-		IP:              ip,
-	}
-}
-
-func NewExternalTraffic(isIngress bool, port *PortProtocol, ip string) *Traffic {
-	return &Traffic{
-		IsExternal:      true,
-		PodLabels:       nil,
-		NamespaceLabels: nil,
-		Namespace:       "",
-		IsIngress:       isIngress,
-		Port:            port,
-		IP:              ip,
-	}
+	//NodeLabels      map[string]string
+	//Node            string
 }

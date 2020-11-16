@@ -102,28 +102,34 @@ func mungeNetworkPolicies() {
 		matcherPolicyBytes, err := json.MarshalIndent(matcherPolicy, "", "  ")
 		utils.DoOrDie(err)
 		fmt.Printf("created matcher netpol:\n\n%s\n\n", matcherPolicyBytes)
-		isAllowed, allowers, matchingTargets := matcherPolicy.IsTrafficAllowed(&matcher.ResolvedTraffic{
-			Traffic: matcher.NewPodTraffic(
-				map[string]string{
-					"app": "bookstore",
+		allowedResult := matcherPolicy.IsTrafficAllowed(&matcher.Traffic{
+			Source: &matcher.TrafficPeer{
+				Internal: &matcher.InternalPeer{
+					NamespaceLabels: map[string]string{
+						"app": "bookstore",
+					},
+					PodLabels: map[string]string{},
+					Namespace: "not-default",
 				},
-				map[string]string{},
-				"not-default",
-				true,
-				&matcher.PortProtocol{
-					Protocol: v1.ProtocolTCP,
-					Port:     intstr.FromInt(9800),
+				IP: "1.2.3.4",
+			},
+			Destination: &matcher.TrafficPeer{
+				Internal: &matcher.InternalPeer{
+					PodLabels: map[string]string{
+						"app": "web",
+					},
+					NamespaceLabels: nil,
+					Namespace:       "default",
 				},
-				"1.2.3.4"),
-			Target: &matcher.ResolvedPodTarget{
-				PodLabels: map[string]string{
-					"app": "web",
-				},
-				NamespaceLabels: nil,
-				Namespace:       "default",
+			},
+			PortProtocol: &matcher.PortProtocol{
+				Protocol: v1.ProtocolTCP,
+				Port:     intstr.FromInt(9800),
 			},
 		})
-		fmt.Printf("is allowed?  %t\n - allowers: %+v\n - matching targets: %+v\n", isAllowed, allowers, matchingTargets)
+		fmt.Printf("is allowed?  %t\n", allowedResult.IsAllowed())
+		printJSON(allowedResult)
+		fmt.Printf("\n\n")
 	}
 
 	netpols := matcher.BuildNetworkPolicies(allCreated)
