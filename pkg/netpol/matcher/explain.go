@@ -10,11 +10,26 @@ func Explain(policies *Policy) string {
 	var lines []string
 	for _, t := range policies.Targets {
 		lines = append(lines, t.GetPrimaryKey())
-		if t.Ingress != nil {
+		if len(t.SourceRules) != 0 {
+			lines = append(lines, "  source rules:")
+			for _, sr := range t.SourceRules {
+				lines = append(lines, "    "+sr)
+			}
+		}
+		if t.Ingress == nil {
+			lines = append(lines, "  all ingress allowed")
+		} else if len(t.Ingress.Matchers) == 0 {
+			lines = append(lines, "  all ingress blocked")
+		} else {
 			lines = append(lines, "  ingress:")
 			lines = append(lines, ExplainTrafficPeers(t.Ingress)...)
 		}
-		if t.Egress != nil {
+
+		if t.Egress == nil {
+			lines = append(lines, "  all egress allowed")
+		} else if len(t.Egress.Matchers) == 0 {
+			lines = append(lines, "  all egress blocked")
+		} else {
 			lines = append(lines, "  egress:")
 			lines = append(lines, ExplainTrafficPeers(t.Egress)...)
 		}

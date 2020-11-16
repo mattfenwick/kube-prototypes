@@ -30,16 +30,6 @@ func (np *Policy) TargetsApplyingToPod(namespace string, podLabels map[string]st
 	return targets
 }
 
-func (np *Policy) TargetsApplyingToNamespace(namespace string) []*Target {
-	var targets []*Target
-	for _, t := range np.Targets {
-		if t.Namespace == namespace {
-			targets = append(targets, t)
-		}
-	}
-	return targets
-}
-
 type DirectionResult struct {
 	IsAllowed       bool
 	AllowingTargets []*Target
