@@ -14,8 +14,7 @@ import (
 type Target struct {
 	Namespace   string
 	PodSelector metav1.LabelSelector
-	Egress      *IngressEgressMatcher
-	Ingress     *IngressEgressMatcher
+	Edge        EdgeMatcher
 	SourceRules []string
 	primaryKey  string
 }
@@ -41,8 +40,7 @@ func (t *Target) Combine(other *Target) *Target {
 	return &Target{
 		Namespace:   t.Namespace,
 		PodSelector: t.PodSelector,
-		Egress:      t.Egress.Combine(other.Egress),
-		Ingress:     t.Ingress.Combine(other.Ingress),
+		Edge:        Combine(t.Edge, other.Edge),
 		SourceRules: append(t.SourceRules, other.SourceRules...),
 	}
 }

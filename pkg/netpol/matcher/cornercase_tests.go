@@ -14,76 +14,76 @@ var anySourceDestAndPort = &PeerPortMatcher{
 	Port: &AllPortsAllProtocolsMatcher{},
 }
 
-var anyTrafficPeer = &IngressEgressMatcher{Matchers: []*PeerPortMatcher{anySourceDestAndPort}}
+var anyTrafficPeer = &EdgePeerPortMatcher{Matchers: []*PeerPortMatcher{anySourceDestAndPort}}
 
 func RunCornerCaseTests() {
 	Describe("Allow none -- nil egress/ingress", func() {
 		It("allow-no-ingress", func() {
-			target := BuildTarget(examples.AllowNoIngress)
+			ingress, egress := BuildTarget(examples.AllowNoIngress)
 
-			Expect(target.Ingress).To(Equal(&IngressEgressMatcher{}))
-			//Expect(target.Ingress).To(Equal(&IngressEgressMatcher{Matchers: []*PeerPortMatcher{}}))
-			Expect(target.Egress).To(BeNil())
+			Expect(ingress.Edge).To(Equal(&NoneEdgeMatcher{}))
+			//Expect(target.Ingress).To(Equal(&EdgeMatcher{Matchers: []*PeerPortMatcher{}}))
+			Expect(egress).To(BeNil())
 		})
 
 		It("allow-no-egress", func() {
-			target := BuildTarget(examples.AllowNoEgress)
+			ingress, egress := BuildTarget(examples.AllowNoEgress)
 
-			Expect(target.Egress).To(Equal(&IngressEgressMatcher{}))
-			Expect(target.Ingress).To(BeNil())
+			Expect(egress.Edge).To(Equal(&NoneEdgeMatcher{}))
+			Expect(ingress).To(BeNil())
 		})
 
 		It("allow-neither", func() {
-			target := BuildTarget(examples.AllowNoIngressAllowNoEgress)
+			ingress, egress := BuildTarget(examples.AllowNoIngressAllowNoEgress)
 
-			Expect(target.Ingress).To(Equal(&IngressEgressMatcher{}))
-			Expect(target.Egress).To(Equal(&IngressEgressMatcher{}))
+			Expect(ingress.Edge).To(Equal(&NoneEdgeMatcher{}))
+			Expect(egress.Edge).To(Equal(&NoneEdgeMatcher{}))
 		})
 	})
 
 	Describe("Allow none -- empty ingress/egress", func() {
 		It("allow-no-ingress", func() {
-			target := BuildTarget(examples.AllowNoIngress_EmptyIngress)
+			ingress, egress := BuildTarget(examples.AllowNoIngress_EmptyIngress)
 
-			Expect(target.Ingress).To(Equal(&IngressEgressMatcher{}))
-			Expect(target.Egress).To(BeNil())
+			Expect(ingress.Edge).To(Equal(&NoneEdgeMatcher{}))
+			Expect(egress).To(BeNil())
 		})
 
 		It("allow-no-egress", func() {
-			target := BuildTarget(examples.AllowNoEgress_EmptyEgress)
+			ingress, egress := BuildTarget(examples.AllowNoEgress_EmptyEgress)
 
-			Expect(target.Egress).To(Equal(&IngressEgressMatcher{}))
-			Expect(target.Ingress).To(BeNil())
+			Expect(egress.Edge).To(Equal(&NoneEdgeMatcher{}))
+			Expect(ingress).To(BeNil())
 		})
 
 		It("allow-neither", func() {
-			target := BuildTarget(examples.AllowNoIngressAllowNoEgress_EmptyEgressEmptyIngress)
+			ingress, egress := BuildTarget(examples.AllowNoIngressAllowNoEgress_EmptyEgressEmptyIngress)
 
-			Expect(target.Ingress).To(Equal(&IngressEgressMatcher{}))
-			Expect(target.Egress).To(Equal(&IngressEgressMatcher{}))
+			Expect(ingress.Edge).To(Equal(&NoneEdgeMatcher{}))
+			Expect(egress.Edge).To(Equal(&NoneEdgeMatcher{}))
 		})
 	})
 
 	Describe("Allow all", func() {
 		It("allow-all-ingress", func() {
-			target := BuildTarget(examples.AllowAllIngress)
+			ingress, egress := BuildTarget(examples.AllowAllIngress)
 
-			Expect(target.Egress).To(BeNil())
-			Expect(target.Ingress).To(Equal(anyTrafficPeer))
+			Expect(egress).To(BeNil())
+			Expect(ingress.Edge).To(Equal(anyTrafficPeer))
 		})
 
 		It("allow-all-egress", func() {
-			target := BuildTarget(examples.AllowAllEgress)
+			ingress, egress := BuildTarget(examples.AllowAllEgress)
 
-			Expect(target.Egress).To(Equal(anyTrafficPeer))
-			Expect(target.Ingress).To(BeNil())
+			Expect(egress.Edge).To(Equal(anyTrafficPeer))
+			Expect(ingress).To(BeNil())
 		})
 
 		It("allow-all-both", func() {
-			target := BuildTarget(examples.AllowAllIngressAllowAllEgress)
+			ingress, egress := BuildTarget(examples.AllowAllIngressAllowAllEgress)
 
-			Expect(target.Egress).To(Equal(anyTrafficPeer))
-			Expect(target.Ingress).To(Equal(anyTrafficPeer))
+			Expect(egress.Edge).To(Equal(anyTrafficPeer))
+			Expect(ingress.Edge).To(Equal(anyTrafficPeer))
 		})
 	})
 

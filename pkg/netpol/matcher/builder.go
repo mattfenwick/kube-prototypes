@@ -13,42 +13,61 @@ func BuildNetworkPolicy(policy *networkingv1.NetworkPolicy) *Policy {
 func BuildNetworkPolicies(netpols []*networkingv1.NetworkPolicy) *Policy {
 	np := NewPolicy()
 	for _, policy := range netpols {
-		np.AddTarget(BuildTarget(policy))
+		ingress, egress := BuildTarget(policy)
+		if ingress != nil {
+			np.AddTarget(true, ingress)
+		}
+		if egress != nil {
+			np.AddTarget(false, egress)
+		}
 	}
 	return np
 }
 
-func BuildTarget(netpol *networkingv1.NetworkPolicy) *Target {
-	target := &Target{
-		Namespace:   netpol.Namespace,
-		PodSelector: netpol.Spec.PodSelector,
-		SourceRules: []string{netpol.Name},
-	}
+func BuildTarget(netpol *networkingv1.NetworkPolicy) (*Target, *Target) {
+	var ingress *Target
+	var egress *Target
 	for _, pType := range netpol.Spec.PolicyTypes {
 		switch pType {
 		case networkingv1.PolicyTypeIngress:
-			target.Ingress = BuildIngressMatcher(netpol.Namespace, netpol.Spec.Ingress)
+			ingress = &Target{
+				Namespace:   netpol.Namespace,
+				PodSelector: netpol.Spec.PodSelector,
+				SourceRules: []string{netpol.Name},
+				Edge:        BuildIngressMatcher(netpol.Namespace, netpol.Spec.Ingress),
+			}
 		case networkingv1.PolicyTypeEgress:
-			target.Egress = BuildEgressMatcher(netpol.Namespace, netpol.Spec.Egress)
+			egress = &Target{
+				Namespace:   netpol.Namespace,
+				PodSelector: netpol.Spec.PodSelector,
+				SourceRules: []string{netpol.Name},
+				Edge:        BuildEgressMatcher(netpol.Namespace, netpol.Spec.Egress),
+			}
 		}
 	}
-	return target
+	return ingress, egress
 }
 
-func BuildIngressMatcher(policyNamespace string, ingresses []networkingv1.NetworkPolicyIngressRule) *IngressEgressMatcher {
+func BuildIngressMatcher(policyNamespace string, ingresses []networkingv1.NetworkPolicyIngressRule) EdgeMatcher {
+	if len(ingresses) == 0 {
+		return &NoneEdgeMatcher{}
+	}
 	var sdaps []*PeerPortMatcher
 	for _, ingress := range ingresses {
 		sdaps = append(sdaps, BuildPeerPortMatchers(policyNamespace, ingress.Ports, ingress.From)...)
 	}
-	return &IngressEgressMatcher{Matchers: sdaps}
+	return &EdgePeerPortMatcher{Matchers: sdaps}
 }
 
-func BuildEgressMatcher(policyNamespace string, egresses []networkingv1.NetworkPolicyEgressRule) *IngressEgressMatcher {
+func BuildEgressMatcher(policyNamespace string, egresses []networkingv1.NetworkPolicyEgressRule) EdgeMatcher {
+	if len(egresses) == 0 {
+		return &NoneEdgeMatcher{}
+	}
 	var sdaps []*PeerPortMatcher
 	for _, egress := range egresses {
 		sdaps = append(sdaps, BuildPeerPortMatchers(policyNamespace, egress.Ports, egress.To)...)
 	}
-	return &IngressEgressMatcher{Matchers: sdaps}
+	return &EdgePeerPortMatcher{Matchers: sdaps}
 }
 
 func BuildPeerPortMatchers(policyNamespace string, npPorts []networkingv1.NetworkPolicyPort, peers []networkingv1.NetworkPolicyPeer) []*PeerPortMatcher {

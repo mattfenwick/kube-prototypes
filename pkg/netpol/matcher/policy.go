@@ -2,27 +2,40 @@ package matcher
 
 // This is the root type
 type Policy struct {
-	Targets map[string]*Target
+	Ingress map[string]*Target
+	Egress  map[string]*Target
 }
 
 func NewPolicy() *Policy {
-	return &Policy{Targets: map[string]*Target{}}
+	return &Policy{Ingress: map[string]*Target{}, Egress: map[string]*Target{}}
 }
 
-func (np *Policy) AddTarget(target *Target) *Target {
+func (np *Policy) AddTarget(isIngress bool, target *Target) *Target {
 	pk := target.GetPrimaryKey()
-	if prev, ok := np.Targets[pk]; ok {
-		combined := prev.Combine(target)
-		np.Targets[pk] = combined
+	var dict map[string]*Target
+	if isIngress {
+		dict = np.Ingress
 	} else {
-		np.Targets[pk] = target
+		dict = np.Egress
 	}
-	return np.Targets[pk]
+	if prev, ok := dict[pk]; ok {
+		combined := prev.Combine(target)
+		dict[pk] = combined
+	} else {
+		dict[pk] = target
+	}
+	return dict[pk]
 }
 
-func (np *Policy) TargetsApplyingToPod(namespace string, podLabels map[string]string) []*Target {
+func (np *Policy) TargetsApplyingToPod(isIngress bool, namespace string, podLabels map[string]string) []*Target {
 	var targets []*Target
-	for _, target := range np.Targets {
+	var dict map[string]*Target
+	if isIngress {
+		dict = np.Ingress
+	} else {
+		dict = np.Egress
+	}
+	for _, target := range dict {
 		if target.IsMatch(namespace, podLabels) {
 			targets = append(targets, target)
 		}
@@ -72,30 +85,24 @@ func (np *Policy) IsIngressOrEgressAllowed(traffic *Traffic, isIngress bool) *Di
 		return &DirectionResult{IsAllowed: true, AllowingTargets: nil, MatchingTargets: nil}
 	}
 
-	matchingTargets := np.TargetsApplyingToPod(target.Internal.Namespace, target.Internal.PodLabels)
+	matchingTargets := np.TargetsApplyingToPod(isIngress, target.Internal.Namespace, target.Internal.PodLabels)
 
-	// No targets match => automatic allow
+	// 2. No targets match => automatic allow
 	if len(matchingTargets) == 0 {
 		return &DirectionResult{IsAllowed: true, AllowingTargets: nil, MatchingTargets: nil}
 	}
 
-	// Check if any matching targets allow this traffic
+	// 3. Check if any matching targets allow this traffic
 	var allowers []*Target
 	for _, target := range matchingTargets {
-		if isIngress {
-			if target.Ingress.Allows(peer, traffic.PortProtocol) {
-				allowers = append(allowers, target)
-			}
-		} else {
-			if target.Egress.Allows(peer, traffic.PortProtocol) {
-				allowers = append(allowers, target)
-			}
+		if target.Edge.Allows(peer, traffic.PortProtocol) {
+			allowers = append(allowers, target)
 		}
 	}
 	if len(allowers) > 0 {
 		return &DirectionResult{IsAllowed: true, AllowingTargets: allowers, MatchingTargets: matchingTargets}
 	}
 
-	// Otherwise, deny
+	// 4. Otherwise, deny
 	return &DirectionResult{IsAllowed: false, AllowingTargets: nil, MatchingTargets: matchingTargets}
 }
