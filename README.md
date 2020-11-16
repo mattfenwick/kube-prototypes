@@ -2,7 +2,7 @@
 
 This repository is a demonstration of an RDF based data model for network policies, and is a work in progress prototype.
 
-Note it is *definetly* not at all useful in a production environment of any sort, at this stage.
+Note: it is not intended to be used in a production environment at this stage.
 
 # Background
 
