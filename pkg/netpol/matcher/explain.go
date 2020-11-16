@@ -57,7 +57,7 @@ func ExplainTrafficPeers(tp *IngressEgressMatcher) []string {
 			port = fmt.Sprintf("all ports on protocol %s", p.Protocol)
 		case *AllPortsAllProtocols:
 			port = "all ports all protocols"
-		case *PortProtocol:
+		case *ExactPortProtocol:
 			port = fmt.Sprintf("port %s on protocol %s", p.Port.String(), p.Protocol)
 		default:
 			panic(errors.Errorf("unexpected Port type %T", p))

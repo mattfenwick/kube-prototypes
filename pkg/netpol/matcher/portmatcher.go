@@ -42,22 +42,22 @@ func (apop *AllPortsOnProtocol) MarshalJSON() (b []byte, e error) {
 	})
 }
 
-// PortProtocol models the case where traffic must match a protocol and
+// ExactPortProtocol models the case where traffic must match a protocol and
 // a number/named port
-type PortProtocol struct {
+type ExactPortProtocol struct {
 	Protocol v1.Protocol
 	Port     intstr.IntOrString
 }
 
-func (pp *PortProtocol) Allows(other *PortProtocol) bool {
-	return other.Protocol == pp.Protocol && isPortMatch(other.Port, pp.Port)
+func (epp *ExactPortProtocol) Allows(other *PortProtocol) bool {
+	return other.Protocol == epp.Protocol && isPortMatch(other.Port, epp.Port)
 }
 
-func (pp *PortProtocol) MarshalJSON() (b []byte, e error) {
+func (epp *ExactPortProtocol) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type":     "port on protocol",
-		"Protocol": pp.Protocol,
-		"Port":     pp.Port,
+		"Protocol": epp.Protocol,
+		"Port":     epp.Port,
 	})
 }
 

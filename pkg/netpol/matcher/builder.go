@@ -89,7 +89,7 @@ func BuildPortMatcher(p networkingv1.NetworkPolicyPort) PortMatcher {
 	if p.Port == nil {
 		return &AllPortsOnProtocol{Protocol: protocol}
 	}
-	return &PortProtocol{Port: *p.Port, Protocol: protocol}
+	return &ExactPortProtocol{Port: *p.Port, Protocol: protocol}
 }
 
 func BuildPeerMatchers(policyNamespace string, peers []networkingv1.NetworkPolicyPeer) []PeerMatcher {

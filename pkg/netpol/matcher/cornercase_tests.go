@@ -170,7 +170,7 @@ func RunCornerCaseTests() {
 
 		It("allow numbered port on protocol", func() {
 			sd := BuildPortMatcher(examples.AllowNumberedPortOnProtocol)
-			Expect(sd).To(Equal(&PortProtocol{
+			Expect(sd).To(Equal(&ExactPortProtocol{
 				Protocol: v1.ProtocolTCP,
 				Port:     intstr.FromInt(9001),
 			}))
@@ -178,7 +178,7 @@ func RunCornerCaseTests() {
 
 		It("allow named port on protocol", func() {
 			sd := BuildPortMatcher(examples.AllowNamedPortOnProtocol)
-			Expect(sd).To(Equal(&PortProtocol{
+			Expect(sd).To(Equal(&ExactPortProtocol{
 				Protocol: v1.ProtocolUDP,
 				Port:     intstr.FromString("hello"),
 			}))
