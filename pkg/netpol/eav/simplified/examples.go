@@ -1,10 +1,10 @@
 package eav
 
 import (
+	"github.com/mattfenwick/kube-prototypes/pkg/kube/netpol/examples"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // Denies
@@ -146,15 +146,6 @@ var SameNamespaceSourceAndDest = &Policy{
 	},
 }
 
-var (
-	tcp     = v1.ProtocolTCP
-	udp     = v1.ProtocolUDP
-	port53  = intstr.FromInt(53)
-	port80  = intstr.FromInt(80)
-	port443 = intstr.FromInt(443)
-	port988 = intstr.FromInt(988)
-)
-
 var AnthosAllowKubeDNSEgressNetworkPolicy = &networkingv1.NetworkPolicy{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "allow-kube-dns-egress",
@@ -171,8 +162,8 @@ var AnthosAllowKubeDNSEgressNetworkPolicy = &networkingv1.NetworkPolicy{
 		Egress: []networkingv1.NetworkPolicyEgressRule{
 			{
 				Ports: []networkingv1.NetworkPolicyPort{
-					{Protocol: &tcp, Port: &port53},
-					{Protocol: &udp, Port: &port53},
+					{Protocol: &examples.TCP, Port: &examples.Port53},
+					{Protocol: &examples.UDP, Port: &examples.Port53},
 				},
 				To: []networkingv1.NetworkPolicyPeer{
 					{
@@ -184,7 +175,7 @@ var AnthosAllowKubeDNSEgressNetworkPolicy = &networkingv1.NetworkPolicy{
 			},
 			{
 				Ports: []networkingv1.NetworkPolicyPort{
-					{Protocol: &tcp, Port: &port443},
+					{Protocol: &examples.TCP, Port: &examples.Port443},
 				},
 				To: []networkingv1.NetworkPolicyPeer{
 					{
@@ -196,7 +187,7 @@ var AnthosAllowKubeDNSEgressNetworkPolicy = &networkingv1.NetworkPolicy{
 			},
 			{
 				Ports: []networkingv1.NetworkPolicyPort{
-					{Protocol: &tcp, Port: &port443},
+					{Protocol: &examples.TCP, Port: &examples.Port443},
 				},
 				To: []networkingv1.NetworkPolicyPeer{
 					{
@@ -208,7 +199,7 @@ var AnthosAllowKubeDNSEgressNetworkPolicy = &networkingv1.NetworkPolicy{
 			},
 			{
 				Ports: []networkingv1.NetworkPolicyPort{
-					{Protocol: &tcp, Port: &port80},
+					{Protocol: &examples.TCP, Port: &examples.Port80},
 				},
 				To: []networkingv1.NetworkPolicyPeer{
 					{
@@ -220,7 +211,7 @@ var AnthosAllowKubeDNSEgressNetworkPolicy = &networkingv1.NetworkPolicy{
 			},
 			{
 				Ports: []networkingv1.NetworkPolicyPort{
-					{Protocol: &tcp, Port: &port988},
+					{Protocol: &examples.TCP, Port: &examples.Port988},
 				},
 				To: []networkingv1.NetworkPolicyPeer{
 					{
@@ -303,8 +294,8 @@ var AnthosAllowKubeDNSIngressNetworkPolicy = &networkingv1.NetworkPolicy{
 		Ingress: []networkingv1.NetworkPolicyIngressRule{
 			{
 				Ports: []networkingv1.NetworkPolicyPort{
-					{Protocol: &tcp, Port: &port53},
-					{Protocol: &udp, Port: &port53},
+					{Protocol: &examples.TCP, Port: &examples.Port53},
+					{Protocol: &examples.UDP, Port: &examples.Port53},
 				},
 				From: []networkingv1.NetworkPolicyPeer{
 					{

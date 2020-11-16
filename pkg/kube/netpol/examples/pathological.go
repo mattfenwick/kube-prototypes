@@ -1,10 +1,8 @@
 package examples
 
 import (
-	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var (
@@ -206,23 +204,17 @@ var AllowIPBlockPeer = networkingv1.NetworkPolicyPeer{
 
 // allow based on matching port and protocol
 
-var sctp = v1.ProtocolSCTP
-var tcp = v1.ProtocolTCP
-var udp = v1.ProtocolUDP
-var port9001Ref = intstr.FromInt(9001)
-var portHello = intstr.FromString("hello")
-
 var AllowAllPortsOnProtocol = networkingv1.NetworkPolicyPort{
-	Protocol: &sctp,
+	Protocol: &SCTP,
 	Port:     nil,
 }
 
 var AllowNumberedPortOnProtocol = networkingv1.NetworkPolicyPort{
-	Protocol: &tcp,
-	Port:     &port9001Ref,
+	Protocol: &TCP,
+	Port:     &Port9001Ref,
 }
 
 var AllowNamedPortOnProtocol = networkingv1.NetworkPolicyPort{
-	Protocol: &udp,
-	Port:     &portHello,
+	Protocol: &UDP,
+	Port:     &PortHello,
 }
