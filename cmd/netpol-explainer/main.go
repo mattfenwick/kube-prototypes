@@ -52,6 +52,12 @@ func main() {
 		fmt.Printf("%s\n\n", matcher.Explain(explainedPolicies))
 	}
 
+	if true {
+		explainedPolicies := matcher.BuildNetworkPolicies(examples.AllExamples)
+		printJSON(explainedPolicies)
+		fmt.Printf("%s\n\n", matcher.Explain(explainedPolicies))
+	}
+
 	if false {
 		mungeNetworkPolicies()
 	}
