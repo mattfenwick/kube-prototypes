@@ -53,11 +53,11 @@ func ExplainTrafficPeers(tp *IngressEgressMatcher) []string {
 			panic(errors.Errorf("unexpected PeerMatcher type %T", t))
 		}
 		switch p := sd.Port.(type) {
-		case *AllPortsOnProtocol:
+		case *AllPortsOnProtocolMatcher:
 			port = fmt.Sprintf("all ports on protocol %s", p.Protocol)
-		case *AllPortsAllProtocols:
+		case *AllPortsAllProtocolsMatcher:
 			port = "all ports all protocols"
-		case *ExactPortProtocol:
+		case *ExactPortProtocolMatcher:
 			port = fmt.Sprintf("port %s on protocol %s", p.Port.String(), p.Protocol)
 		default:
 			panic(errors.Errorf("unexpected Port type %T", p))

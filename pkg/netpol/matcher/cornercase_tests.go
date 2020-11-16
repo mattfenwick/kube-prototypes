@@ -11,7 +11,7 @@ import (
 
 var anySourceDestAndPort = &PeerPortMatcher{
 	Peer: &AnywherePeerMatcher{},
-	Port: &AllPortsAllProtocols{},
+	Port: &AllPortsAllProtocolsMatcher{},
 }
 
 var anyTrafficPeer = &IngressEgressMatcher{Matchers: []*PeerPortMatcher{anySourceDestAndPort}}
@@ -158,19 +158,19 @@ func RunCornerCaseTests() {
 	Describe("Port from slice of NetworkPolicyPort", func() {
 		It("allows all ports and all protocols from an empty slice", func() {
 			sds := BuildPortMatchers([]networkingv1.NetworkPolicyPort{})
-			Expect(sds).To(Equal([]PortMatcher{&AllPortsAllProtocols{}}))
+			Expect(sds).To(Equal([]PortMatcher{&AllPortsAllProtocolsMatcher{}}))
 		})
 	})
 
 	Describe("Port from NetworkPolicyPort", func() {
 		It("allow all ports on protocol", func() {
 			sd := BuildPortMatcher(examples.AllowAllPortsOnProtocol)
-			Expect(sd).To(Equal(&AllPortsOnProtocol{Protocol: v1.ProtocolSCTP}))
+			Expect(sd).To(Equal(&AllPortsOnProtocolMatcher{Protocol: v1.ProtocolSCTP}))
 		})
 
 		It("allow numbered port on protocol", func() {
 			sd := BuildPortMatcher(examples.AllowNumberedPortOnProtocol)
-			Expect(sd).To(Equal(&ExactPortProtocol{
+			Expect(sd).To(Equal(&ExactPortProtocolMatcher{
 				Protocol: v1.ProtocolTCP,
 				Port:     intstr.FromInt(9001),
 			}))
@@ -178,7 +178,7 @@ func RunCornerCaseTests() {
 
 		It("allow named port on protocol", func() {
 			sd := BuildPortMatcher(examples.AllowNamedPortOnProtocol)
-			Expect(sd).To(Equal(&ExactPortProtocol{
+			Expect(sd).To(Equal(&ExactPortProtocolMatcher{
 				Protocol: v1.ProtocolUDP,
 				Port:     intstr.FromString("hello"),
 			}))

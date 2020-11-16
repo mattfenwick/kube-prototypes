@@ -10,50 +10,50 @@ type PortMatcher interface {
 	Allows(port *PortProtocol) bool
 }
 
-// AllPortsAllProtocols models the case where no ports/protocols are
+// AllPortsAllProtocolsMatcher models the case where no ports/protocols are
 // specified, which is treated as "allow any" by NetworkPolicy
-type AllPortsAllProtocols struct{}
+type AllPortsAllProtocolsMatcher struct{}
 
-func (ap *AllPortsAllProtocols) Allows(pp *PortProtocol) bool {
+func (ap *AllPortsAllProtocolsMatcher) Allows(pp *PortProtocol) bool {
 	return true
 }
 
-func (ap *AllPortsAllProtocols) MarshalJSON() (b []byte, e error) {
+func (ap *AllPortsAllProtocolsMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]string{
 		"Type": "all ports all protocols",
 	})
 }
 
-// AllPortsOnProtocol models the case where a protocol is specified but
+// AllPortsOnProtocolMatcher models the case where a protocol is specified but
 // a port number/name is not, which is treated as "allow any number/named
 // port on the matching protocol"
-type AllPortsOnProtocol struct {
+type AllPortsOnProtocolMatcher struct {
 	Protocol v1.Protocol
 }
 
-func (apop *AllPortsOnProtocol) Allows(pp *PortProtocol) bool {
+func (apop *AllPortsOnProtocolMatcher) Allows(pp *PortProtocol) bool {
 	return apop.Protocol == pp.Protocol
 }
 
-func (apop *AllPortsOnProtocol) MarshalJSON() (b []byte, e error) {
+func (apop *AllPortsOnProtocolMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type":     "all ports on protocol",
 		"Protocol": apop.Protocol,
 	})
 }
 
-// ExactPortProtocol models the case where traffic must match a protocol and
+// ExactPortProtocolMatcher models the case where traffic must match a protocol and
 // a number/named port
-type ExactPortProtocol struct {
+type ExactPortProtocolMatcher struct {
 	Protocol v1.Protocol
 	Port     intstr.IntOrString
 }
 
-func (epp *ExactPortProtocol) Allows(other *PortProtocol) bool {
+func (epp *ExactPortProtocolMatcher) Allows(other *PortProtocol) bool {
 	return other.Protocol == epp.Protocol && isPortMatch(other.Port, epp.Port)
 }
 
-func (epp *ExactPortProtocol) MarshalJSON() (b []byte, e error) {
+func (epp *ExactPortProtocolMatcher) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
 		"Type":     "port on protocol",
 		"Protocol": epp.Protocol,

@@ -72,7 +72,7 @@ func BuildPeerPortMatchers(policyNamespace string, npPorts []networkingv1.Networ
 func BuildPortMatchers(npPorts []networkingv1.NetworkPolicyPort) []PortMatcher {
 	var ports []PortMatcher
 	if len(npPorts) == 0 {
-		ports = append(ports, &AllPortsAllProtocols{})
+		ports = append(ports, &AllPortsAllProtocolsMatcher{})
 	} else {
 		for _, p := range npPorts {
 			ports = append(ports, BuildPortMatcher(p))
@@ -87,9 +87,9 @@ func BuildPortMatcher(p networkingv1.NetworkPolicyPort) PortMatcher {
 		protocol = *p.Protocol
 	}
 	if p.Port == nil {
-		return &AllPortsOnProtocol{Protocol: protocol}
+		return &AllPortsOnProtocolMatcher{Protocol: protocol}
 	}
-	return &ExactPortProtocol{Port: *p.Port, Protocol: protocol}
+	return &ExactPortProtocolMatcher{Port: *p.Port, Protocol: protocol}
 }
 
 func BuildPeerMatchers(policyNamespace string, peers []networkingv1.NetworkPolicyPeer) []PeerMatcher {
