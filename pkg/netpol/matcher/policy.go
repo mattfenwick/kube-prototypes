@@ -1,15 +1,15 @@
 package matcher
 
 // This is the root type
-type NetworkPolicies struct {
+type Policy struct {
 	Targets map[string]*Target
 }
 
-func NewNetworkPolicies() *NetworkPolicies {
-	return &NetworkPolicies{Targets: map[string]*Target{}}
+func NewPolicy() *Policy {
+	return &Policy{Targets: map[string]*Target{}}
 }
 
-func (np *NetworkPolicies) AddTarget(target *Target) *Target {
+func (np *Policy) AddTarget(target *Target) *Target {
 	pk := target.GetPrimaryKey()
 	if prev, ok := np.Targets[pk]; ok {
 		combined := prev.Combine(target)
@@ -20,7 +20,7 @@ func (np *NetworkPolicies) AddTarget(target *Target) *Target {
 	return np.Targets[pk]
 }
 
-func (np *NetworkPolicies) TargetsApplyingToPod(namespace string, podLabels map[string]string) []*Target {
+func (np *Policy) TargetsApplyingToPod(namespace string, podLabels map[string]string) []*Target {
 	var targets []*Target
 	for _, target := range np.Targets {
 		if target.IsMatch(namespace, podLabels) {
@@ -30,7 +30,7 @@ func (np *NetworkPolicies) TargetsApplyingToPod(namespace string, podLabels map[
 	return targets
 }
 
-func (np *NetworkPolicies) TargetsApplyingToNamespace(namespace string) []*Target {
+func (np *Policy) TargetsApplyingToNamespace(namespace string) []*Target {
 	var targets []*Target
 	for _, t := range np.Targets {
 		if t.Namespace == namespace {
@@ -59,14 +59,14 @@ func (ar *AllowedResult) IsAllowed() bool {
 // - whether the traffic is allowed
 // - which rules allowed the traffic
 // - which rules matched the traffic target
-func (np *NetworkPolicies) IsTrafficAllowed(traffic *Traffic) *AllowedResult {
+func (np *Policy) IsTrafficAllowed(traffic *Traffic) *AllowedResult {
 	return &AllowedResult{
 		Ingress: np.IsIngressOrEgressAllowed(traffic, true),
 		Egress:  np.IsIngressOrEgressAllowed(traffic, false),
 	}
 }
 
-func (np *NetworkPolicies) IsIngressOrEgressAllowed(traffic *Traffic, isIngress bool) *DirectionResult {
+func (np *Policy) IsIngressOrEgressAllowed(traffic *Traffic, isIngress bool) *DirectionResult {
 	var target *TrafficPeer
 	var peer *TrafficPeer
 	if isIngress {

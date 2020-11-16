@@ -1,35 +1,35 @@
 package matcher
 
-type TrafficPeers struct {
+type IngressEgressMatcher struct {
 	// TODO change this to:
 	//   SourceDests map[string]*PeerPortMatcher
 	//   where the key is the PK of PeerPortMatcher
-	//   and add a (tp *TrafficPeers)Add(sdap *PeerMatcher, port Port) method or something
+	//   and add a (tp *IngressEgressMatcher)Add(sdap *PeerMatcher, port Port) method or something
 	//   goal: nest ports under SourceDests
 	// TODO is there a better way to represent 'nothing allowed' than an empty slice?
-	SourcesOrDests []*PeerPortMatcher
+	Matchers []*PeerPortMatcher
 }
 
-func (tp *TrafficPeers) Combine(other *TrafficPeers) *TrafficPeers {
+func (tp *IngressEgressMatcher) Combine(other *IngressEgressMatcher) *IngressEgressMatcher {
 	if tp == nil && other == nil {
 		// if both rules are (e|in)gress-only, combined rule should be (e|in)gress-only too
 		return nil
 	}
 	var mine, theirs []*PeerPortMatcher
 	if tp != nil {
-		mine = tp.SourcesOrDests
+		mine = tp.Matchers
 	}
 	if other != nil {
-		theirs = other.SourcesOrDests
+		theirs = other.Matchers
 	}
-	return &TrafficPeers{SourcesOrDests: append(mine, theirs...)}
+	return &IngressEgressMatcher{Matchers: append(mine, theirs...)}
 }
 
-func (tp *TrafficPeers) Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool {
+func (tp *IngressEgressMatcher) Allows(peer *TrafficPeer, portProtocol *PortProtocol) bool {
 	if tp == nil {
 		return true
 	}
-	for _, sd := range tp.SourcesOrDests {
+	for _, sd := range tp.Matchers {
 		if sd.Allows(peer, portProtocol) {
 			return true
 		}

@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func Explain(policies *NetworkPolicies) string {
+func Explain(policies *Policy) string {
 	var lines []string
 	for _, t := range policies.Targets {
 		lines = append(lines, t.GetPrimaryKey())
@@ -23,9 +23,9 @@ func Explain(policies *NetworkPolicies) string {
 	return strings.Join(lines, "\n")
 }
 
-func ExplainTrafficPeers(tp *TrafficPeers) []string {
+func ExplainTrafficPeers(tp *IngressEgressMatcher) []string {
 	var lines []string
-	for _, sd := range tp.SourcesOrDests {
+	for _, sd := range tp.Matchers {
 		var sourceDest, port string
 		switch t := sd.Peer.(type) {
 		case *MatchingPodsInAllNamespacesPeerMatcher:

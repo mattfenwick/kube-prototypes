@@ -14,8 +14,8 @@ import (
 type Target struct {
 	Namespace   string
 	PodSelector metav1.LabelSelector
-	Egress      *TrafficPeers
-	Ingress     *TrafficPeers
+	Egress      *IngressEgressMatcher
+	Ingress     *IngressEgressMatcher
 	SourceRules []string
 	primaryKey  string
 }
